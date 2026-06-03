@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>AlydiBank — Divisão de Gastos</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif;-webkit-tap-highlight-color:transparent}
+html{height:100%;overflow-x:hidden}
+body{background:#F0F2F5;min-height:100vh;min-height:-webkit-fill-available;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* iPhone safe area */
+.topbar{background:#003087;padding:max(env(safe-area-inset-top),16px) 16px 0;padding-left:max(env(safe-area-inset-left),16px);padding-right:max(env(safe-area-inset-right),16px);position:sticky;top:0;z-index:10}
+.screen{display:none;flex-direction:column;gap:12px;padding:14px;padding-left:max(env(safe-area-inset-left),14px);padding-right:max(env(safe-area-inset-right),14px);padding-bottom:max(env(safe-area-inset-bottom),80px);animation:fi .18s ease}
+.screen.active{display:flex}
+/* Prevent horizontal scroll on all containers */
+.app{background:#F0F2F5;min-height:100vh;display:none;overflow-x:hidden;width:100%}
+.app.visible{display:block}
+/* Inputs: font-size 16px prevents iOS zoom */
+.field input,.field select,input[type=text],input[type=number],select,.join-input,.member-name-input{font-size:16px!important;border-radius:10px}
+/* Modal bottom sheet — full safe area aware */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center;-webkit-overflow-scrolling:touch}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:18px 18px 0 0;padding:18px;padding-bottom:max(env(safe-area-inset-bottom),18px);width:100%;max-width:600px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* Join screen scrollable on small phones */
+.join-screen{position:fixed;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:max(env(safe-area-inset-top),24px) 24px max(env(safe-area-inset-bottom),24px);z-index:998;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.join-card{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;margin:auto}
+/* Expense card: wrap on very small screens */
+.exp-card{background:#fff;border-radius:14px;padding:12px 13px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.07);border:1px solid #EAECF0;display:flex;align-items:flex-start;gap:11px;width:100%;overflow:hidden}
+.exp-card-body{flex:1;min-width:0;overflow:hidden}
+.exp-card-name{font-size:14px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
+.exp-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;max-width:110px}
+.exp-card-value{font-size:15px;font-weight:700;text-align:right}
+.exp-card-subvalue{font-size:10px;color:#6b6b6b;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:108px}
+/* Balance metric grid full width */
+.bal-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;width:100%}
+/* Person details 2 cols on small screen */
+.bal-person-details{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+/* Settle card wraps properly */
+.bal-settle-card{background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;border:1.5px solid #f0c0bb;display:flex;align-items:center;gap:8px;overflow:hidden}
+/* History header wraps */
+.hist-header{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .15s;gap:8px}
+/* Tabs bottom padding for home indicator */
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 8px 0;gap:2px}
+/* Loader full safe area */
+.loader-screen{position:fixed;inset:0;background:#003087;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+/* Confirm overlay safe area */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;align-items:center;justify-content:center;padding:20px}
+.confirm-overlay.open{display:flex}
+.confirm-box{background:#fff;border-radius:16px;padding:22px;max-width:300px;width:100%;text-align:center}
+/* Toast above home bar */
+.toast{position:fixed;bottom:max(env(safe-area-inset-bottom),16px);left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;z-index:999;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.loader-logo{width:56px;height:56px;background:#EC6608;border-radius:16px;display:flex;align-items:center;justify-content:center}
+.loader-title{font-size:22px;font-weight:500;color:#fff}
+.loader-sub{font-size:13px;color:rgba(255,255,255,.6)}
+.spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-screen.hidden{display:none}
+.join-screen.hidden{display:none}
+.join-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.join-logo-icon{width:40px;height:40px;background:#EC6608;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.join-logo-text{font-size:18px;font-weight:500;color:#003087}
+.join-logo-sub{font-size:11px;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em}
+.join-divider{height:0.5px;background:#f0f0f0}
+.join-input:focus{border-color:#003087}
+.join-or{text-align:center;font-size:12px;color:#6b6b6b;display:flex;align-items:center;gap:8px}
+.join-or::before,.join-or::after{content:'';flex:1;height:0.5px;background:#e0e0e0}
+.topbar-brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.logo-icon{width:36px;height:36px;background:#EC6608;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-name{font-size:15px;font-weight:500;color:#fff}
+.logo-sub{font-size:10px;color:rgba(255,255,255,.6);letter-spacing:.04em;text-transform:uppercase}
+.share-btn{background:rgba(255,255,255,.15);border:none;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:500;color:#fff;cursor:pointer;display:flex;align-items:center;gap:5px;margin-left:auto;font-family:'Plus Jakarta Sans',sans-serif}
+.share-btn:hover{background:rgba(255,255,255,.25)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:60px;padding:7px 4px 9px;font-size:10.5px;font-weight:500;text-align:center;cursor:pointer;color:rgba(255,255,255,.5);border:none;background:rgba(255,255,255,.07);border-radius:8px 8px 0 0;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;margin-bottom:0;border-bottom:3px solid transparent}
+.tab:hover{background:rgba(255,255,255,.13);color:rgba(255,255,255,.8)}
+.tab.active{color:#fff;background:rgba(255,255,255,.18);border-bottom:3px solid #EC6608}
+.tab i{font-size:15px}
+@keyframes fi{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.icard{background:#fff;border-radius:12px;padding:14px 16px}
+.btn-main{background:#EC6608;color:#fff;border:none;border-radius:24px;padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s;font-family:'Plus Jakarta Sans',sans-serif}
+.btn-main:hover{background:#d45a06}
+.btn-outline{background:#fff;color:#003087;border:1.5px solid #003087;border-radius:24px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif}
+.btn-outline:hover{background:#f0f4fa}
+.btn-red{background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:24px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:'Plus Jakarta Sans',sans-serif}
+.btn-red:hover{background:#fff5f5}
+.btn-green{background:#fff;color:#27500A;border:1.5px solid #3B6D11;border-radius:24px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:'Plus Jakarta Sans',sans-serif}
+.btn-green:hover{background:#f2fae8}
+.btn-copy{background:#003087;color:#fff;border:none;border-radius:20px;padding:7px 13px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif}
+.btn-copy:hover{background:#002070}
+.btn-copy.copied{background:#3B6D11}
+.sec-label{font-size:11px;font-weight:500;color:#6b6b6b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.month-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.month-filter::-webkit-scrollbar{display:none}
+.month-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6b6b;white-space:nowrap;transition:all .2s;font-family:'Plus Jakarta Sans',sans-serif}
+.month-btn.active{background:#EC6608;color:#fff;border-color:#EC6608}
+.exp-item{background:#fff;border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:11px;margin-bottom:7px}
+.exp-card-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.exp-card-summary{font-size:12px;color:#6b6b6b;margin-bottom:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.exp-card-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;flex-shrink:0}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:20px}
+.badge-inst{background:#E6F1FB;color:#0C447C}
+.badge-vis{background:#EAF3DE;color:#27500A}
+.badge-ind{background:#FFF0E6;color:#a04000}
+.badge-closed{background:#EAF3DE;color:#27500A;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:3px}
+.me-tag{font-size:11px;background:#E6F1FB;color:#0C447C;padding:1px 6px;border-radius:10px;font-weight:500;margin-left:4px}
+.metric-card{background:#003087;border-radius:10px;padding:12px 14px;flex:1}
+.metric-label{font-size:11px;color:rgba(255,255,255,.65);margin-bottom:3px}
+.metric-value{font-size:19px;font-weight:500;color:#fff}
+.bal-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid #f0f0f0}
+.bal-row:last-child{border-bottom:none}
+.settle-banner{border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.settle-banner.debt{background:#fff5f5;border:0.5px solid #f7c1c1}
+.subtab-row{display:flex;border-radius:24px;overflow:hidden;align-self:flex-start;background:#fff;border:1.5px solid #003087}
+.subtab{padding:7px 20px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:#003087;transition:all .2s;font-family:'Plus Jakarta Sans',sans-serif}
+.subtab.active{background:#003087;color:#fff}
+.hist-item{background:#fff;border-radius:10px;margin-bottom:8px;overflow:hidden}
+.hist-header:hover{background:#f8f8f8}
+.hist-body{display:none;padding:12px 14px;border-top:0.5px solid #f0f0f0;background:#fafafa}
+.hist-body.open{display:block}
+.member-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid #f0f0f0}
+.member-item:last-child{border-bottom:none}
+.empty-state{text-align:center;padding:28px 0;color:#6b6b6b;font-size:13px}
+.chart-wrap{position:relative;width:100%;height:180px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.field label{font-size:12px;color:#6b6b6b;font-weight:500}
+.field input,.field select{width:100%;padding:10px 12px;font-size:14px;border:1.5px solid #d0d0d0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;font-family:'Plus Jakarta Sans',sans-serif}
+.field input:focus,.field select:focus{border-color:#003087}
+.field input:disabled{background:#f5f5f5;color:#aaa;cursor:not-allowed}
+.type-toggle{display:flex;gap:8px}
+.type-btn{flex:1;padding:9px;font-size:13px;font-weight:500;border:1.5px solid #d0d0d0;border-radius:10px;cursor:pointer;text-align:center;background:#fff;color:#6b6b6b;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif}
+.type-btn.sel{background:#E6F1FB;color:#003087;border-color:#003087}
+.inst-field{display:none}
+.inst-field.show{display:flex}
+.pchip{padding:7px 13px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6b6b;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif}
+.pchip.sel{border-color:#003087;background:#E6F1FB;color:#003087}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:18px 18px 0 0;padding:18px;width:100%;max-width:600px;max-height:92vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;border-radius:2px;background:#d0d0d0;margin:0 auto 18px}
+.modal-title{font-size:16px;font-weight:500;margin-bottom:15px;color:#003087}
+.payer-switch{display:flex;align-items:center;justify-content:space-between;background:#F0F2F5;border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.payer-left{display:flex;align-items:center;gap:9px}
+.switch-btn{font-size:12px;color:#003087;background:#fff;border:1.5px solid #003087;border-radius:20px;padding:4px 10px;cursor:pointer;font-weight:500;font-family:'Plus Jakarta Sans',sans-serif}
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;align-items:center;justify-content:center}
+.confirm-overlay.open{display:flex}
+.confirm-box{background:#fff;border-radius:16px;padding:22px;max-width:300px;width:90%;text-align:center}
+.confirm-title{font-size:16px;font-weight:500;color:#003087;margin-bottom:8px}
+.confirm-sub{font-size:13px;color:#6b6b6b;margin-bottom:18px;line-height:1.5}
+.confirm-btns{display:flex;gap:8px;justify-content:center}
+.add-member-row{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:0.5px solid #f0f0f0}
+.add-member-row input{flex:1;padding:9px 12px;font-size:14px;border:1.5px solid #d0d0d0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;font-family:'Plus Jakarta Sans',sans-serif}
+.add-member-row input:focus{border-color:#003087}
+.deposit-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid #f0f0f0}
+.deposit-item:last-child{border-bottom:none}
+.pix-box{background:#F0F2F5;border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.reserva-total-card{background:#003087;border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.dep-chip{padding:7px 13px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6b6b;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif}
+.dep-chip.sel{border-color:#003087;background:#E6F1FB;color:#003087}
+.member-name-input{font-size:14px;font-weight:500;border:1.5px solid #d0d0d0;border-radius:8px;padding:5px 9px;color:#1a1a1a;background:#fff;outline:none;width:100%;font-family:'Plus Jakarta Sans',sans-serif}
+.member-name-input:focus{border-color:#003087}
+.split-toggle{display:flex;gap:8px;margin-bottom:14px}
+.split-btn{flex:1;padding:9px;font-size:12px;font-weight:500;border:1.5px solid #d0d0d0;border-radius:10px;cursor:pointer;text-align:center;background:#fff;color:#6b6b6b;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;font-family:'Plus Jakarta Sans',sans-serif}
+.split-btn.sel{background:#E6F1FB;color:#003087;border-color:#003087}
+.split-btn.sel-ind{background:#FFF0E6;color:#a04000;border-color:#EC6608}
+.share-panel{background:#E6F1FB;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.share-link{font-size:11px;color:#0C447C;font-family:monospace;word-break:break-all;flex:1}
+/* ── STEP WIZARD ── */
+.step-dots{display:flex;align-items:center;gap:5px;margin-bottom:18px}
+.step-dot{width:7px;height:7px;border-radius:50%;background:#d0d0d0;transition:all .3s}
+.step-dot.active{background:#EC6608;width:22px;border-radius:4px}
+.step-dot.done{background:#3B6D11}
+.step-title{font-size:17px;font-weight:500;color:#003087;margin-bottom:4px}
+.step-sub{font-size:13px;color:#6b6b6b;margin-bottom:18px}
+.step-opt{width:100%;display:flex;align-items:center;gap:13px;padding:13px 14px;border:1.5px solid #d0d0d0;border-radius:12px;background:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:10px;transition:all .15s;text-align:left}
+.step-opt:hover{border-color:#aaa}
+.step-opt.sel{border-color:#003087;background:#E6F1FB}
+.step-opt.sel-ind{border-color:#EC6608;background:#FFF0E6}
+.step-opt-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.step-opt-text h4{font-size:14px;font-weight:500;color:#1a1a1a}
+.step-opt-text p{font-size:12px;color:#6b6b6b;margin-top:2px}
+.step-opt-check{margin-left:auto;width:22px;height:22px;border-radius:50%;border:1.5px solid #d0d0d0;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:12px;color:transparent}
+.step-opt.sel .step-opt-check{background:#003087;border-color:#003087;color:#fff}
+.step-opt.sel-ind .step-opt-check{background:#EC6608;border-color:#EC6608;color:#fff}
+.step-nav{display:flex;gap:8px;margin-top:18px}
+.step-payer-box{background:#F0F2F5;border-radius:11px;padding:12px 14px;display:flex;align-items:center;gap:11px;margin-bottom:12px;border:1.5px solid transparent;transition:border-color .15s}
+.step-resumo{background:#F0F2F5;border-radius:11px;padding:14px;margin-bottom:16px}
+.step-resumo-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid #e0e0e0}
+.step-resumo-row:last-child{border-bottom:none}
+.step-resumo-label{font-size:13px;color:#6b6b6b}
+.step-resumo-value{font-size:13px;font-weight:500;color:#1a1a1a}
+
+.online-dot{width:8px;height:8px;border-radius:50%;background:#3B6D11;display:inline-block;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.exp-actions{display:flex;gap:4px;flex-shrink:0}
+.exp-action-btn{background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;color:#bbb;font-size:16px;transition:all .15s}
+.exp-action-btn:hover{background:#f0f0f0;color:#003087}
+.exp-action-btn.del:hover{background:#fff5f5;color:#c0392b}
+.inst-advance-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.inst-badge{padding:5px 12px;border-radius:12px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6b6b;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif}
+.inst-badge.paid{background:#EAF3DE;color:#27500A;border-color:#3B6D11}
+
+/* ── BALANÇO MELHORADO ── */
+.bal-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.bal-metric-card{background:#003087;border-radius:12px;padding:14px 16px}
+.bal-metric-label{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.bal-metric-value{font-size:20px;font-weight:500;color:#fff}
+.bal-metric-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+.bal-person-card{background:#fff;border-radius:14px;padding:14px 15px;margin-bottom:10px;border:1.5px solid #EAECF0;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.bal-person-card.is-creditor{border-color:#b7dfac;background:#f7fdf4}
+.bal-person-card.is-debtor{border-color:#f5c0bb;background:#fff8f7}
+.bal-person-card.is-even{border-color:#d0d0d0}
+.bal-person-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bal-person-name{font-size:14px;font-weight:600;color:#1a1a1a;display:flex;align-items:center;gap:6px}
+.bal-person-status{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;margin-left:auto;white-space:nowrap}
+.bal-person-status.cred{background:#EAF3DE;color:#27500A}
+.bal-person-status.debt{background:#FFE8E5;color:#c0392b}
+.bal-person-status.even{background:#F0F2F5;color:#6b6b6b}
+.bal-person-details{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.bal-detail-cell{background:#F0F2F5;border-radius:9px;padding:8px 10px}
+.bal-detail-cell-label{font-size:10px;color:#8a8a8a;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.bal-detail-cell-value{font-size:13px;font-weight:600;color:#1a1a1a}
+.bal-settle-section{margin-top:4px}
+.bal-settle-title{font-size:11px;font-weight:600;color:#6b6b6b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.bal-settle-card{background:#fff;border-radius:12px;padding:14px 15px;margin-bottom:8px;border:1.5px solid #f0c0bb;display:flex;align-items:center;gap:12px}
+.bal-settle-from{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.bal-settle-arrow{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;padding:0 4px}
+.bal-settle-arrow-line{width:40px;height:2px;background:#EC6608;position:relative}
+.bal-settle-arrow-line::after{content:'';position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left:7px solid #EC6608}
+.bal-settle-to{display:flex;align-items:center;gap:8px;flex:1;min-width:0;justify-content:flex-end}
+.bal-settle-amount{font-size:14px;font-weight:700;color:#EC6608;text-align:center;white-space:nowrap}
+.bal-settle-person{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bal-settle-role{font-size:10px;color:#6b6b6b}
+.bal-all-even{background:#EAF3DE;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px}
+
+/* ── GRUPOS SALVOS ── */
+.saved-group-item{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:12px;border:1.5px solid #e0e0e0;background:#fff;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.saved-group-item:hover{border-color:#003087;background:#f5f8ff}
+.saved-group-icon{width:38px;height:38px;border-radius:10px;background:#003087;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;color:#fff;font-weight:600}
+.saved-group-name{font-size:14px;font-weight:600;color:#1a1a1a}
+.saved-group-sub{font-size:11px;color:#6b6b6b;margin-top:1px}
+.saved-group-remove{margin-left:auto;background:none;border:none;cursor:pointer;color:#ccc;font-size:16px;padding:4px;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif}
+.saved-group-remove:hover{color:#c0392b;background:#fff5f5}
+.tab-badge{background:#c0392b;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;line-height:16px;display:inline-block;margin-left:3px}
+
+/* ── MINI STATUS BANNER (tela Lançamentos) ── */
+.my-status-banner{border-radius:12px;padding:12px 15px;display:flex;align-items:center;gap:12px;margin-bottom:2px}
+.my-status-banner.debt{background:#fff0ee;border:1.5px solid #f5c0bb}
+.my-status-banner.cred{background:#f2fae8;border:1.5px solid #b7dfac}
+.my-status-banner.even{background:#F0F2F5;border:1.5px solid #d0d0d0}
+.my-status-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.my-status-text-main{font-size:13px;font-weight:600;color:#1a1a1a}
+.my-status-text-sub{font-size:11px;color:#6b6b6b;margin-top:1px}
+.my-status-action{margin-left:auto;font-size:11px;font-weight:500;color:#003087;cursor:pointer;white-space:nowrap;background:none;border:none;font-family:'Plus Jakarta Sans',sans-serif;padding:0;text-decoration:underline}
+
+/* ── FILTRO CATEGORIA ── */
+.cat-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;margin-top:-4px}
+.cat-filter::-webkit-scrollbar{display:none}
+.cat-btn{padding:5px 11px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6b6b;white-space:nowrap;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;gap:4px}
+.cat-btn.active{background:#003087;color:#fff;border-color:#003087}
+
+/* ── ONBOARDING BANNER ── */
+.onboard-banner{background:linear-gradient(135deg,#003087 0%,#0050c8 100%);border-radius:14px;padding:16px;display:flex;align-items:flex-start;gap:12px}
+.onboard-banner-icon{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.onboard-banner-title{font-size:14px;font-weight:600;color:#fff;margin-bottom:3px}
+.onboard-banner-sub{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:10px;line-height:1.4}
+.onboard-banner-close{margin-left:auto;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.5);font-size:16px;padding:0;line-height:1}
+
+/* ── HISTÓRICO PESSOAL ── */
+.hist-my-badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap}
+
+/* ── META RESERVA ── */
+.reserva-goal-bar-wrap{height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin-top:10px}
+.reserva-goal-bar{height:100%;border-radius:4px;background:#EC6608;transition:width .4s ease}
+.reserva-goal-label{font-size:11px;color:rgba(255,255,255,.6);margin-top:4px}
+
+/* ── DATA NOS CARDS DE DESPESA ── */
+.exp-card-date{font-size:10px;color:#b0b0b0;margin-top:3px}
+</style>
+</head>
+<body>
+
+<div class="loader-screen" id="loader">
+  <div class="loader-logo">
+    <svg width="28" height="28" viewBox="0 0 22 22" fill="none">
+      <circle cx="11" cy="11" r="9" stroke="#fff" stroke-width="1.5" fill="none"/>
+      <path d="M7 11 L10 14 L15 8" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M11 2 L11 4.5M11 17.5 L11 20M2 11 L4.5 11M17.5 11 L20 11" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="loader-title">AlydiBank</div>
+  <div class="loader-sub" id="loader-msg">Conectando...</div>
+  <div class="spinner"></div>
+</div>
+
+<div class="join-screen" id="join-screen">
+  <div class="join-card">
+    <div class="join-logo">
+      <div class="join-logo-icon">
+        <svg width="24" height="24" viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="9" stroke="#fff" stroke-width="1.5" fill="none"/>
+          <path d="M7 11 L10 14 L15 8" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M11 2 L11 4.5M11 17.5 L11 20M2 11 L4.5 11M17.5 11 L20 11" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="join-logo-text">AlydiBank</div>
+        <div class="join-logo-sub">Divisão de gastos</div>
+      </div>
+    </div>
+    <div class="join-divider"></div>
+
+    <!-- Lista de grupos salvos -->
+    <div id="saved-groups-section" style="display:none">
+      <div style="font-size:12px;font-weight:600;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Seus grupos</div>
+      <div id="saved-groups-list"></div>
+      <div class="join-or">ou</div>
+    </div>
+
+    <div>
+      <div style="font-size:13px;font-weight:500;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Criar novo grupo</div>
+      <div class="field" style="margin-bottom:10px"><label>Nome do grupo</label><input type="text" id="new-group-name" placeholder="Ex: Namorado, Mãe, Casa..."/></div>
+      <div class="field" style="margin-bottom:10px"><label>Seu nome</label><input type="text" id="new-user-name" placeholder="Como quer ser chamado..."/></div>
+      <button class="btn-main" style="width:100%;justify-content:center" onclick="createGroup()"><i class="ti ti-plus"></i>Criar grupo</button>
+    </div>
+    <div class="join-or">ou entre em um grupo existente</div>
+    <div>
+      <div style="font-size:13px;font-weight:500;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Entrar com link</div>
+      <div class="field" style="margin-bottom:8px"><label>Seu nome</label><input type="text" id="join-user-name" placeholder="Como quer ser chamado..."/></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="join-input" id="join-code-input" placeholder="Cole o link aqui..." style="flex:1"/>
+        <button class="btn-outline" onclick="joinGroup()"><i class="ti ti-login"></i>Entrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="main-app">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="9" stroke="#fff" stroke-width="1.5" fill="none"/>
+          <path d="M7 11 L10 14 L15 8" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M11 2 L11 4.5M11 17.5 L11 20M2 11 L4.5 11M17.5 11 L20 11" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-name" id="topbar-title">Meu Grupo</div>
+        <div class="logo-sub"><span class="online-dot"></span>ao vivo</div>
+      </div>
+      <button class="share-btn" onclick="shareGroup()"><i class="ti ti-share"></i>Compartilhar</button>
+      <button class="share-btn" onclick="switchGroup()" style="background:rgba(255,255,255,.1)" title="Trocar grupo"><i class="ti ti-switch-horizontal"></i></button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tab-expenses" onclick="showTab('expenses')"><i class="ti ti-receipt"></i>Lançamentos</button>
+      <button class="tab" id="tab-balance" onclick="showTab('balance')"><i class="ti ti-scale"></i>Balanço<span class="tab-badge" id="balance-badge" style="display:none">!</span></button>
+      <button class="tab" id="tab-reserva" onclick="showTab('reserva')"><i class="ti ti-piggy-bank"></i>Reserva</button>
+      <button class="tab" id="tab-group" onclick="showTab('group')"><i class="ti ti-users"></i>Grupo</button>
+    </div>
+  </div>
+
+  <div class="screen active" id="screen-expenses">
+    <div id="onboard-banner-wrap"></div>
+    <div id="my-status-wrap"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:15px;font-weight:500;color:#003087" id="month-title">Despesas</div>
+        <div style="font-size:12px;color:#6b6b6b" id="exp-count">0 lançamentos</div>
+      </div>
+      <button class="btn-main" onclick="openModal()"><i class="ti ti-plus"></i>Novo</button>
+    </div>
+    <div class="month-filter" id="month-filter-exp"></div>
+    <div id="expense-list"></div>
+    <div class="icard">
+      <div class="sec-label">Total por mês — grupo</div>
+      <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-balance">
+    <div class="subtab-row">
+      <button class="subtab active" id="subtab-atual" onclick="showSubtab('atual')">Atual</button>
+      <button class="subtab" id="subtab-hist" onclick="showSubtab('historico')">Histórico</button>
+    </div>
+    <div id="subtab-screen-atual">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:500;color:#003087" id="bal-month-title">Balanço</div>
+        <button class="btn-green" onclick="confirmSettle()"><i class="ti ti-lock"></i>Encerrar</button>
+      </div>
+      <div class="month-filter" id="month-filter-bal" style="margin-bottom:12px"></div>
+      <div id="balance-metrics"></div>
+      <div id="balance-list"><div class="empty-state">Nenhum gasto ainda.</div></div>
+    </div>
+    <div id="subtab-screen-historico" style="display:none">
+      <div style="font-size:15px;font-weight:500;color:#003087;margin-bottom:12px">Histórico</div>
+      <div id="hist-list"><div class="empty-state"><i class="ti ti-archive" style="font-size:26px;display:block;margin-bottom:8px"></i>Nenhum mês encerrado ainda.</div></div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-reserva">
+    <div class="reserva-total-card">
+      <div style="font-size:12px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Saldo da reserva</div>
+      <div style="font-size:32px;font-weight:500;color:#fff" id="reserva-total">R$ 0,00</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.5)" id="reserva-count">0 depósitos realizados</div>
+      <div id="reserva-goal-section" style="width:100%;margin-top:8px;display:none">
+        <div class="reserva-goal-bar-wrap"><div class="reserva-goal-bar" id="reserva-goal-bar" style="width:0%"></div></div>
+        <div class="reserva-goal-label" id="reserva-goal-label"></div>
+      </div>
+    </div>
+    <div class="icard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="sec-label" style="margin-bottom:0">Meta mensal</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" inputmode="decimal" id="goal-input" placeholder="R$ 0,00" oninput="fmtValInput(this)"
+            style="width:110px;padding:6px 10px;font-size:13px;border:1.5px solid #d0d0d0;border-radius:8px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;text-align:right"
+            onfocus="this.style.borderColor='#003087'" onblur="this.style.borderColor='#d0d0d0'"/>
+          <button class="btn-main" style="padding:6px 12px;border-radius:8px;font-size:12px" onclick="saveGoal()"><i class="ti ti-check"></i>Salvar</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#6b6b6b">Defina quanto o grupo quer poupar por mês. A barra de progresso aparece automaticamente.</div>
+    </div>
+    <div class="icard"><div class="sec-label">Chave Pix para depósito</div><div id="pix-display"></div></div>
+    <div class="icard">
+      <div class="sec-label">Registrar depósito</div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:#6b6b6b;font-weight:500;margin-bottom:6px">Quem está depositando?</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap" id="dep-user-chips"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:12px;color:#6b6b6b;font-weight:500;margin-bottom:5px">Valor (R$)</div>
+          <input type="number" id="deposit-value" placeholder="0,00" min="0.01" step="0.01"
+            style="width:100%;padding:10px 12px;font-size:16px;border:1.5px solid #d0d0d0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;font-weight:500;font-family:'Plus Jakarta Sans',sans-serif"
+            onkeydown="if(event.key==='Enter') addDeposit()"
+            onfocus="this.style.borderColor='#003087'" onblur="this.style.borderColor='#d0d0d0'"/>
+        </div>
+        <button class="btn-main" style="padding:10px 16px;border-radius:10px;white-space:nowrap" onclick="addDeposit()"><i class="ti ti-plus"></i>Adicionar</button>
+      </div>
+    </div>
+    <div class="icard"><div class="sec-label">Histórico de depósitos</div><div id="deposit-list"><div class="empty-state"><i class="ti ti-coins" style="font-size:26px;display:block;margin-bottom:8px"></i>Nenhum depósito ainda.</div></div></div>
+    <div class="icard">
+      <div class="sec-label">Depósitos mensais por membro</div>
+      <div id="dep-chart-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:12px;color:#6b6b6b"></div>
+      <div class="chart-wrap"><canvas id="depChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-group">
+    <div class="icard">
+      <div class="sec-label">Link do grupo</div>
+      <div class="share-panel">
+        <div class="share-link" id="share-link-text">Carregando...</div>
+        <button class="btn-copy" id="copy-link-btn" onclick="copyGroupLink()"><i class="ti ti-copy" style="font-size:14px"></i>Copiar</button>
+      </div>
+      <div style="font-size:12px;color:#6b6b6b;margin-top:8px;display:flex;align-items:center;gap:5px">
+        <i class="ti ti-info-circle" style="font-size:14px;color:#EC6608"></i>Mande este link — quem clicar entra direto.
+      </div>
+    </div>
+    <div class="icard">
+      <div class="sec-label">Nome do grupo</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input id="group-name-input" type="text" style="font-size:16px;font-weight:500;border:none;background:none;color:#003087;flex:1;outline:none;padding:0;font-family:'Plus Jakarta Sans',sans-serif" onchange="saveGroupName(this.value)"/>
+        <i class="ti ti-pencil" style="color:#6b6b6b;font-size:15px"></i>
+      </div>
+    </div>
+    <div class="icard">
+      <div class="sec-label">Chave Pix da reserva</div>
+      <div class="field" style="margin-bottom:8px"><label>Instituição</label><input type="text" id="pix-inst-input" placeholder="Ex: Nubank, Itaú..."/></div>
+      <div class="field" style="margin-bottom:8px"><label>Chave Pix</label><input type="text" id="pix-key-input" placeholder="Cole a chave Pix..." style="font-family:monospace;font-size:13px"/></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px" id="pix-action-btns">
+        <button class="btn-main" style="flex:1;justify-content:center" onclick="savePix()"><i class="ti ti-device-floppy"></i>Salvar</button>
+      </div>
+    </div>
+    <div class="icard">
+      <div class="sec-label">Membros</div>
+      <div id="member-list"></div>
+      <div class="add-member-row">
+        <input type="text" id="new-member-input" placeholder="Nome do novo membro..." onkeydown="if(event.key==='Enter') addMember()"/>
+        <button class="btn-main" onclick="addMember()"><i class="ti ti-user-plus"></i>Adicionar</button>
+      </div>
+    </div>
+    <div style="padding-top:4px">
+      <button class="btn-red" style="width:100%;justify-content:center" onclick="confirmReset()"><i class="ti ti-trash"></i>Apagar todos os dados</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DESPESA — PASSO A PASSO -->
+<div class="modal-bg" id="modal-bg" onclick="closeModalOutside(event)">
+  <div class="modal" style="padding-bottom:28px">
+    <div class="modal-handle"></div>
+
+    <!-- Indicador de steps -->
+    <div class="step-dots" id="step-dots"></div>
+
+    <!-- STEP 1: Tipo de despesa -->
+    <div id="wiz-step1">
+      <div class="step-title">Tipo de despesa</div>
+      <div class="step-sub">Como esta despesa será classificada?</div>
+      <button class="step-opt" id="wiz-opt-dividida" onclick="wizSetSplit('dividida')">
+        <div class="step-opt-icon" style="background:#E6F1FB;color:#003087"><i class="ti ti-users"></i></div>
+        <div class="step-opt-text"><h4>Compartilhada</h4><p>O valor será dividido entre todos do grupo</p></div>
+        <div class="step-opt-check"><i class="ti ti-check"></i></div>
+      </button>
+      <button class="step-opt" id="wiz-opt-individual" onclick="wizSetSplit('individual')">
+        <div class="step-opt-icon" style="background:#FFF0E6;color:#EC6608"><i class="ti ti-user"></i></div>
+        <div class="step-opt-text"><h4>Individual</h4><p>Despesa total de uma pessoa específica</p></div>
+        <div class="step-opt-check"><i class="ti ti-check"></i></div>
+      </button>
+      <div class="step-nav">
+        <button class="btn-outline" style="flex:1;justify-content:center" onclick="closeModal()">Cancelar</button>
+        <button class="btn-main" style="flex:1;justify-content:center" onclick="wizGo(2)">Próximo <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Quem está pagando -->
+    <div id="wiz-step2" style="display:none">
+      <div class="step-title">Quem está pagando?</div>
+      <div class="step-sub">Selecione a pessoa que realizou o pagamento.</div>
+      <div id="wiz-payer-chips" style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px"></div>
+      <div class="step-nav">
+        <button class="btn-outline" style="flex:1;justify-content:center" onclick="wizGo(1)"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn-main" style="flex:1;justify-content:center" onclick="wizGo(3)">Próximo <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Detalhes -->
+    <div id="wiz-step3" style="display:none">
+      <div class="step-title">Detalhes da despesa</div>
+      <div class="step-sub">Preencha as informações básicas.</div>
+      <div class="field"><label>Nome da despesa</label><input type="text" id="expense-name" placeholder="Ex: Supermercado, Aluguel..."/></div>
+      <div class="field"><label>Valor total (R$)</label><input type="text" inputmode="decimal" id="expense-value" placeholder="0,00" oninput="fmtValInput(this)" autocomplete="off"/></div>
+      <div class="field"><label>Mês de início</label>
+        <select id="expense-month"></select>
+      </div>
+      <div class="step-nav">
+        <button class="btn-outline" style="flex:1;justify-content:center" onclick="wizGo(2)"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn-main" style="flex:1;justify-content:center" onclick="wizGo(4)">Próximo <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Tipo de pagamento -->
+    <div id="wiz-step4" style="display:none">
+      <div class="step-title">Tipo de pagamento</div>
+      <div class="step-sub">Como será pago?</div>
+      <button class="step-opt" id="wiz-opt-avista" onclick="wizSetPayType('avista')">
+        <div class="step-opt-icon" style="background:#EAF3DE;color:#27500A"><i class="ti ti-cash"></i></div>
+        <div class="step-opt-text"><h4>À vista</h4><p>Pago de uma vez só neste mês</p></div>
+        <div class="step-opt-check"><i class="ti ti-check"></i></div>
+      </button>
+      <button class="step-opt" id="wiz-opt-parc" onclick="wizSetPayType('parcelado')">
+        <div class="step-opt-icon" style="background:#F3F0FF;color:#5B21B6"><i class="ti ti-calendar-repeat"></i></div>
+        <div class="step-opt-text"><h4>Parcelado</h4><p>Dividido em parcelas mensais</p></div>
+        <div class="step-opt-check"><i class="ti ti-check"></i></div>
+      </button>
+      <div id="wiz-inst-row" style="display:none;margin-top:4px">
+        <div class="field" style="margin-bottom:0"><label>Número de parcelas</label><input type="number" id="inst-count" placeholder="Ex: 6" min="2" max="120" value="2"/></div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-outline" style="flex:1;justify-content:center" onclick="wizGo(3)"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn-main" style="flex:1;justify-content:center" onclick="wizGo(5)">Próximo <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 5: Resumo e confirmação -->
+    <div id="wiz-step5" style="display:none">
+      <div class="step-title">Confirmar despesa</div>
+      <div class="step-sub">Revise antes de salvar.</div>
+      <div class="step-resumo" id="wiz-resumo"></div>
+      <div class="step-nav">
+        <button class="btn-outline" style="flex:1;justify-content:center" onclick="wizGo(4)"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn-main" style="flex:1;justify-content:center" id="modal-save-btn" onclick="saveExpense()"><i class="ti ti-check"></i> Salvar despesa</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL EDITAR DESPESA (tela única) -->
+<div class="modal-bg" id="edit-modal-bg" onclick="if(event.target.id==='edit-modal-bg')closeEditModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar despesa</div>
+    <div class="field"><label>Tipo de despesa</label>
+      <div class="split-toggle">
+        <button class="split-btn" id="edit-split-div" onclick="editSetSplit('dividida')"><i class="ti ti-users" style="font-size:14px"></i>Compartilhada</button>
+        <button class="split-btn" id="edit-split-ind" onclick="editSetSplit('individual')"><i class="ti ti-user" style="font-size:14px"></i>Individual</button>
+      </div>
+    </div>
+    <div class="payer-switch">
+      <div class="payer-left">
+        <div class="avatar" id="edit-payer-avatar" style="width:36px;height:36px;font-size:13px"></div>
+        <div>
+          <div style="font-size:14px;font-weight:500;color:#1a1a1a" id="edit-payer-name">—</div>
+          <div style="font-size:12px;color:#6b6b6b">Quem está pagando</div>
+        </div>
+      </div>
+      <button class="switch-btn" onclick="editTogglePicker()"><i class="ti ti-switch-horizontal" style="font-size:13px"></i> Trocar</button>
+    </div>
+    <div id="edit-payer-picker" style="display:none;margin-bottom:14px">
+      <div class="sec-label">Selecionar pagador</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap" id="edit-payer-chips"></div>
+    </div>
+    <div class="field"><label>Nome da despesa</label><input type="text" id="edit-expense-name" placeholder="Ex: Supermercado, Aluguel..."/></div>
+    <div class="field"><label>Valor total (R$)</label><input type="text" inputmode="decimal" id="edit-expense-value" placeholder="0,00" oninput="fmtValInput(this)" autocomplete="off"/></div>
+    <div class="field"><label>Mês de início</label>
+      <select id="edit-expense-month"></select>
+    </div>
+    <div class="field"><label>Tipo de pagamento</label>
+      <div class="type-toggle">
+        <button class="type-btn" id="edit-btn-avista" onclick="editSetType('avista')">À vista</button>
+        <button class="type-btn" id="edit-btn-parc" onclick="editSetType('parcelado')">Parcelado</button>
+      </div>
+    </div>
+    <div class="field inst-field" id="edit-inst-row"><label>Número de parcelas</label><input type="number" id="edit-inst-count" placeholder="Ex: 3" min="2" max="120" value="2"/></div>
+    <div style="display:flex;gap:9px;margin-top:6px">
+      <button class="btn-outline" style="flex:1;justify-content:center" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn-main" style="flex:1;justify-content:center" onclick="saveEditExpense()"><i class="ti ti-check"></i> Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADIANTAR PARCELAS -->
+<div class="modal-bg" id="advance-modal-bg" onclick="closeAdvanceOutside(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="advance-modal-title">Adiantar parcelas</div>
+    <div style="font-size:13px;color:#6b6b6b;margin-bottom:14px" id="advance-modal-sub"></div>
+    <div class="sec-label">Marque as parcelas já pagas / adiantadas</div>
+    <div class="inst-advance-row" id="advance-inst-list"></div>
+    <div style="margin-top:16px;display:flex;gap:9px">
+      <button class="btn-outline" style="flex:1;justify-content:center" onclick="closeAdvanceModal()">Fechar</button>
+      <button class="btn-main" style="flex:1;justify-content:center" onclick="saveAdvance()"><i class="ti ti-check"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-settle">
+  <div class="confirm-box">
+    <i class="ti ti-lock" style="font-size:30px;color:#3B6D11;margin-bottom:10px;display:block"></i>
+    <div class="confirm-title" id="confirm-settle-title">Encerrar mês?</div>
+    <div class="confirm-sub">O mês será marcado como encerrado e ficará no Histórico.</div>
+    <div class="confirm-btns"><button class="btn-outline" onclick="closeConfirm('confirm-settle')">Cancelar</button><button class="btn-green" onclick="doSettle()"><i class="ti ti-lock"></i>Encerrar</button></div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-reopen">
+  <div class="confirm-box">
+    <i class="ti ti-lock-open" style="font-size:30px;color:#EC6608;margin-bottom:10px;display:block"></i>
+    <div class="confirm-title" style="color:#EC6608">Reabrir mês?</div>
+    <div class="confirm-sub" id="confirm-reopen-sub">O mês voltará para a aba Atual e poderá ser editado novamente.</div>
+    <div class="confirm-btns"><button class="btn-outline" onclick="closeConfirm('confirm-reopen')">Cancelar</button><button class="btn-main" onclick="doReopen()"><i class="ti ti-lock-open"></i>Reabrir</button></div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-delete">
+  <div class="confirm-box">
+    <i class="ti ti-trash" style="font-size:30px;color:#c0392b;margin-bottom:10px;display:block"></i>
+    <div class="confirm-title" style="color:#c0392b">Excluir despesa?</div>
+    <div class="confirm-sub" id="confirm-delete-sub">Esta ação não pode ser desfeita.</div>
+    <div class="confirm-btns"><button class="btn-outline" onclick="closeConfirm('confirm-delete')">Cancelar</button><button class="btn-red" onclick="doDeleteExpense()"><i class="ti ti-trash"></i>Excluir</button></div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-reset">
+  <div class="confirm-box">
+    <i class="ti ti-trash" style="font-size:30px;color:#c0392b;margin-bottom:10px;display:block"></i>
+    <div class="confirm-title" style="color:#c0392b">Apagar tudo?</div>
+    <div class="confirm-sub">Todos os dados do grupo serão apagados permanentemente.</div>
+    <div class="confirm-btns"><button class="btn-outline" onclick="closeConfirm('confirm-reset')">Cancelar</button><button class="btn-red" onclick="doReset()"><i class="ti ti-trash"></i>Apagar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyByzHR4fDfizwqWVV3M5lEjn3mlWV83UcM",
+  authDomain: "alydibank-8d87c.firebaseapp.com",
+  projectId: "alydibank-8d87c",
+  storageBucket: "alydibank-8d87c.firebasestorage.app",
+  messagingSenderId: "1084309646032",
+  appId: "1:1084309646032:web:c565c91ea2a6d516e18cd5"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+// ── FIX 2: meses além de dezembro ──
+const MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MNF=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function monthLabel(m){const n=MN[m%12];const y=2026+Math.floor(m/12);return y===2026?n:`${n}/${String(y).slice(2)}`;}
+function monthLabelFull(m){const n=MNF[m%12];const y=2026+Math.floor(m/12);return `${n} ${y}`;}
+
+const PAL=['#003087','#EC6608','#1D9E75','#BA7517','#993556','#534AB7'];
+const PAL_BG=['#E6F1FB','#FFF0E6','#E1F5EE','#FAEEDA','#FBEAF0','#EEEDFE'];
+
+let groupId=null,myName=null,myIdx=0;
+let S={members:[],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,groupName:'Meu Grupo',reservaGoal:0};
+let payType='avista',selPayer=0,selBenef=0,splitType='dividida',selDepositor=0;
+let barChart=null,depChart=null;
+let editingExpIdx=null,deletingExpIdx=null,advExpIdx=null;
+let advPaid=new Set();
+let activeCatFilter='todos';
+
+const ini=n=>n.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+const fmt=v=>'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const mc=i=>PAL[i%PAL.length];
+const mb=i=>PAL_BG[i%PAL_BG.length];
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function setLoader(m){document.getElementById('loader-msg').textContent=m;}
+function genId(){return Math.random().toString(36).substring(2,10);}
+
+// ── STORAGE: usa cookies + localStorage como fallback ──
+function setCookie(name,value,days=365){
+  const d=new Date();d.setTime(d.getTime()+(days*24*60*60*1000));
+  document.cookie=`${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+}
+function getCookie(name){
+  const v=document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith(name+'='));
+  return v?decodeURIComponent(v.split('=')[1]):null;
+}
+function setStore(key,value){
+  try{localStorage.setItem(key,value);}catch(e){}
+  setCookie(key,value);
+}
+function getStore(key){
+  try{const v=localStorage.getItem(key);if(v)return v;}catch(e){}
+  return getCookie(key);
+}
+function removeStore(key){
+  try{localStorage.removeItem(key);}catch(e){}
+  document.cookie=`${key}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+}
+
+function storageKey(gid){return 'alydi_name_'+gid;}
+
+// ── MÚLTIPLOS GRUPOS ──
+function allSavedGroups(){
+  try{const raw=localStorage.getItem('alydi_groups');if(raw)return JSON.parse(raw);}catch(e){}
+  const raw=getCookie('alydi_groups');
+  return raw?JSON.parse(raw):[];
+}
+function saveGroupToList(gid,gName,uName){
+  const list=allSavedGroups().filter(g=>g.id!==gid);
+  list.unshift({id:gid,name:gName,user:uName,ts:Date.now()});
+  const val=JSON.stringify(list.slice(0,20));
+  try{localStorage.setItem('alydi_groups',val);}catch(e){}
+  setCookie('alydi_groups',val);
+}
+function removeGroupFromList(gid){
+  const list=allSavedGroups().filter(g=>g.id!==gid);
+  const val=JSON.stringify(list);
+  try{localStorage.setItem('alydi_groups',val);}catch(e){}
+  setCookie('alydi_groups',val);
+}
+
+function renderSavedGroups(){
+  const list=allSavedGroups();
+  const sec=document.getElementById('saved-groups-section');
+  const el=document.getElementById('saved-groups-list');
+  if(!sec||!el)return;
+  if(!list.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  el.innerHTML=list.map(g=>`
+    <div class="saved-group-item" onclick="loadSavedGroup('${g.id}')">
+      <div class="saved-group-icon">${(g.name||'G')[0].toUpperCase()}</div>
+      <div>
+        <div class="saved-group-name">${g.name||g.id}</div>
+        <div class="saved-group-sub">Você como <strong>${g.user}</strong></div>
+      </div>
+      <button class="saved-group-remove" onclick="removeSavedGroup(event,'${g.id}')" title="Remover"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+window.loadSavedGroup=async function(gid){
+  const list=allSavedGroups();
+  const item=list.find(g=>g.id===gid);
+  if(!item)return;
+  groupId=gid; myName=item.user;
+  localStorage.setItem('lastGroup',gid);
+  document.getElementById('join-screen').classList.add('hidden');
+  document.getElementById('loader').classList.remove('hidden');
+  setLoader('Carregando grupo...');
+  await joinAndListen();
+}
+window.removeSavedGroup=function(evt,gid){
+  evt.stopPropagation();
+  const item=allSavedGroups().find(g=>g.id===gid);
+  const name=item?.name||'este grupo';
+  if(!confirm(`Remover "${name}" da sua lista?\n\nOs dados do grupo não serão apagados, só sairá da sua tela inicial.`)) return;
+  removeGroupFromList(gid);
+  if(localStorage.getItem('lastGroup')===gid) localStorage.removeItem('lastGroup');
+  renderSavedGroups();
+}
+window.switchGroup=function(){
+  // Para o listener atual
+  if(window._unsubscribe) window._unsubscribe();
+  groupId=null; myName=null;
+  S={members:[],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,groupName:'Meu Grupo',reservaGoal:0};
+  window._amE=undefined; window._amB=undefined;
+  removeStore('lastGroup');
+  document.getElementById('main-app').classList.remove('visible');
+  document.getElementById('join-screen').classList.remove('hidden');
+  // Limpa campos
+  document.getElementById('new-group-name').value='';
+  document.getElementById('new-user-name').value='';
+  document.getElementById('join-code-input').value='';
+  renderSavedGroups();
+}
+
+window.createGroup=async function(){
+  const gName=document.getElementById('new-group-name').value.trim();
+  const uName=document.getElementById('new-user-name').value.trim();
+  if(!gName||!uName){showToast('Preencha o nome do grupo e seu nome');return;}
+  setLoader('Criando grupo...');
+  document.getElementById('join-screen').classList.add('hidden');
+  document.getElementById('loader').classList.remove('hidden');
+  groupId=genId();myName=uName;
+  await setDoc(doc(db,'groups',groupId),{groupName:gName,members:[{name:uName}],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,createdAt:Date.now()});
+  setStore(storageKey(groupId),myName);
+  setStore('lastGroup',groupId);
+  saveGroupToList(groupId,gName,uName);
+  startListening();
+}
+
+window.joinGroup=async function(){
+  const uName=document.getElementById('join-user-name').value.trim();
+  if(!uName){showToast('Informe seu nome antes de entrar');return;}
+  let input=document.getElementById('join-code-input').value.trim();
+  const match=input.match(/[?&]g=([a-z0-9]+)/i)||input.match(/([a-z0-9]{6,})/i);
+  const gid=match?match[1]:input;
+  if(!gid){showToast('Cole o link do grupo');return;}
+  groupId=gid;myName=uName;
+  document.getElementById('join-screen').classList.add('hidden');
+  document.getElementById('loader').classList.remove('hidden');
+  setLoader('Entrando no grupo...');
+  await joinAndListen();
+}
+
+// ── DEVICE ID: identificador único do dispositivo salvo em cookie ──
+function getDeviceId(){
+  let did=getCookie('alydi_device');
+  if(!did){
+    did='dev_'+Math.random().toString(36).substring(2,10);
+    setCookie('alydi_device',did,3650); // 10 anos
+  }
+  return did;
+}
+
+async function joinAndListen(){
+  const ref=doc(db,'groups',groupId);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){showToast('Grupo não encontrado');document.getElementById('join-screen').classList.remove('hidden');document.getElementById('loader').classList.add('hidden');return;}
+  const data=snap.data();
+  const existing=data.members.find(m=>m.name.toLowerCase()===myName.toLowerCase());
+  if(!existing){
+    data.members.push({name:myName});
+    await updateDoc(ref,{members:data.members});
+  } else {
+    myName=existing.name;
+  }
+  // Salva deviceId → nome no Firebase
+  const deviceId=getDeviceId();
+  const devices=data.devices||{};
+  devices[deviceId]=myName;
+  await updateDoc(ref,{devices});
+  setStore(storageKey(groupId),myName);
+  setStore('lastGroup',groupId);
+  saveGroupToList(groupId,data.groupName||groupId,myName);
+  startListening();
+}
+
+function startListening(){
+  if(window._unsubscribe) window._unsubscribe();
+  persistGroupInUrl(groupId, myName);
+  setStore(storageKey(groupId),myName);
+  setStore('lastGroup',groupId);
+  window._unsubscribe=onSnapshot(doc(db,'groups',groupId),(snap)=>{
+    if(!snap.exists()) return;
+    S=snap.data();
+    S.members=S.members||[];S.expenses=S.expenses||[];S.history=S.history||[];S.deposits=S.deposits||[];S.reservaGoal=S.reservaGoal||0;
+    myIdx=Math.max(0,S.members.findIndex(m=>m.name===myName));
+    // Atualiza nome do grupo na lista salva
+    saveGroupToList(groupId,S.groupName||groupId,myName);
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('join-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.add('visible');
+    document.getElementById('topbar-title').textContent=S.groupName||'Meu Grupo';
+    document.getElementById('group-name-input').value=S.groupName||'Meu Grupo';
+    document.getElementById('pix-key-input').value=S.pixKey||'';
+    document.getElementById('pix-inst-input').value=S.pixInst||'';
+    updateShareLink();renderExpensesTab();renderMemberList();renderPixDisplay();
+    if(S.pixSaved){document.getElementById('pix-key-input').disabled=true;document.getElementById('pix-inst-input').disabled=true;document.getElementById('pix-action-btns').innerHTML=`<button class="btn-outline" style="flex:1;justify-content:center" onclick="editPix()"><i class="ti ti-pencil"></i>Editar chave</button>`;}
+    const active=document.querySelector('.screen.active');
+    if(active?.id==='screen-balance') renderBalance();
+    if(active?.id==='screen-reserva') renderReserva();
+    updateBalanceBadge();
+  });
+}
+
+async function save(){
+  if(!groupId) return;
+  try {
+    await setDoc(doc(db,'groups',groupId),{
+      members:S.members,
+      expenses:S.expenses,
+      history:S.history,
+      deposits:S.deposits,
+      pixKey:S.pixKey,
+      pixInst:S.pixInst,
+      pixSaved:S.pixSaved,
+      groupName:S.groupName,
+      reservaGoal:S.reservaGoal||0
+    },{merge:true});
+  } catch(e){
+    console.error('Erro ao salvar:',e);
+    showToast('⚠️ Erro ao salvar. Verifique sua conexão.');
+  }
+}
+
+function updateShareLink(){const url=`${location.origin}${location.pathname}?g=${groupId}`;const el=document.getElementById('share-link-text');if(el)el.textContent=url;}
+window.shareGroup=function(){const url=`${location.origin}${location.pathname}?g=${groupId}`;if(navigator.share)navigator.share({title:'AlydiBank',url});else{navigator.clipboard?.writeText(url);showToast('Link copiado!');}}
+window.copyGroupLink=function(){const url=`${location.origin}${location.pathname}?g=${groupId}`;navigator.clipboard?.writeText(url);const btn=document.getElementById('copy-link-btn');btn.classList.add('copied');btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>Copiado!';setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML='<i class="ti ti-copy" style="font-size:14px"></i>Copiar';},2000);showToast('Link copiado! Compartilhe com os membros do grupo.');}
+window.saveGroupName=async function(v){S.groupName=v;document.getElementById('topbar-title').textContent=v;await save();}
+
+window.savePix=async function(){const key=document.getElementById('pix-key-input').value.trim();if(!key){showToast('Informe a chave Pix');return;}S.pixKey=key;S.pixInst=document.getElementById('pix-inst-input').value.trim();S.pixSaved=true;document.getElementById('pix-key-input').disabled=true;document.getElementById('pix-inst-input').disabled=true;document.getElementById('pix-action-btns').innerHTML=`<button class="btn-outline" style="flex:1;justify-content:center" onclick="editPix()"><i class="ti ti-pencil"></i>Editar chave</button>`;await save();showToast('Chave Pix salva!');}
+window.editPix=function(){S.pixSaved=false;document.getElementById('pix-key-input').disabled=false;document.getElementById('pix-inst-input').disabled=false;document.getElementById('pix-action-btns').innerHTML=`<button class="btn-main" style="flex:1;justify-content:center" onclick="savePix()"><i class="ti ti-device-floppy"></i>Salvar</button>`;}
+function renderPixDisplay(){const el=document.getElementById('pix-display');if(!S.pixKey){el.innerHTML='<div style="font-size:13px;color:#6b6b6b;display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:15px;color:#EC6608"></i>Nenhuma chave cadastrada. Configure na aba Grupo.</div>';return;}el.innerHTML=`<div class="pix-box"><div style="flex:1;min-width:0">${S.pixInst?`<div style="font-size:12px;font-weight:500;color:#003087;margin-bottom:3px;display:flex;align-items:center;gap:5px"><i class="ti ti-building-bank" style="font-size:13px"></i>${S.pixInst}</div>`:''}<div style="font-size:10px;color:#6b6b6b;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em">Chave</div><div style="font-size:11px;color:#6b6b6b;font-family:monospace;word-break:break-all;line-height:1.5">${S.pixKey}</div></div><button class="btn-copy" id="copy-pix-btn" onclick="copyPix()"><i class="ti ti-copy" style="font-size:14px"></i>Copiar</button></div><div style="font-size:12px;color:#6b6b6b;display:flex;align-items:center;gap:5px"><i class="ti ti-info-circle" style="font-size:14px;color:#EC6608"></i>Após transferir, registre o valor abaixo.</div>`;}
+window.copyPix=function(){const btn=document.getElementById('copy-pix-btn');navigator.clipboard?.writeText(S.pixKey);btn.classList.add('copied');btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>Copiado!';setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML='<i class="ti ti-copy" style="font-size:14px"></i>Copiar';},2000);}
+
+// Lógica de adiantamento:
+// - Parcela adiantada = paga antes do vencimento
+// - No mês do vencimento original: NÃO aparece (já foi paga)
+// - No mês em que foi adiantada (mês de início): aparece somada ao valor normal
+// - Como simplificação: paidInsts guarda índices das parcelas pagas antecipadamente
+//   Elas aparecem no mês 0 (mês de início) como adiantamento, somadas
+
+// Resequencia parcelas não-adiantadas em meses consecutivos a partir do mês de início
+function instSequence(e){
+  const inst=parseInt(e.inst)||1;
+  const month=parseInt(e.month);
+  const paidInsts=new Set((e.paidInsts||[]).map(Number));
+  const naoAdiantadas=[];
+  for(let i=0;i<inst;i++) if(!paidInsts.has(i)) naoAdiantadas.push(i);
+  return naoAdiantadas.map((origIdx,seq)=>({origIdx,newMes:month+seq}));
+}
+
+function getMonthExps(m){
+  const result=[];
+  S.expenses.forEach(e=>{
+    if(e.type==='avista'){if(parseInt(e.month)===m)result.push(e);return;}
+    if(instSequence(e).some(s=>s.newMes===m)) result.push(e);
+  });
+  return result;
+}
+
+function getMonthExpsDisplay(m){
+  const items=[];
+  S.expenses.forEach(e=>{
+    if(e.type==='avista'){
+      if(parseInt(e.month)===m)items.push({exp:e,instIdx:null,instVal:Number(e.value),isPaid:false,adiantQty:0,adiantVal:0,instNum:null,totalInst:1});
+      return;
+    }
+    const inst=parseInt(e.inst)||1;
+    const paidInsts=new Set((e.paidInsts||[]).map(Number));
+    const seq=instSequence(e);
+    const matchIdx=seq.findIndex(s=>s.newMes===m);
+    if(matchIdx===-1)return;
+    const match=seq[matchIdx];
+    const adiantQty=matchIdx===0?paidInsts.size:0;
+    const adiantVal=adiantQty*(Number(e.value)/inst);
+    items.push({
+      exp:e,
+      instIdx:match.origIdx,
+      instVal:Number(e.value)/inst,
+      isPaid:false,
+      adiantQty,
+      adiantVal,
+      instNum:matchIdx+1,
+      totalInst:seq.length
+    });
+  });
+  return items;
+}
+
+function getMonthExpsAll(m){return S.expenses.filter(e=>{if(e.type==='avista') return parseInt(e.month)===m;const inst=parseInt(e.inst)||1;for(let i=0;i<inst;i++) if(parseInt(e.month)+i===m) return true;return false;});}
+function activeMonths(){
+  const s=new Set();
+  S.expenses.forEach(e=>{
+    if(e.type==='avista'){s.add(parseInt(e.month));return;}
+    instSequence(e).forEach(({newMes})=>s.add(newMes));
+    if((e.paidInsts||[]).length>0) s.add(parseInt(e.month));
+  });
+  const cl=new Set(S.history.map(h=>h.month));
+  return [...s].filter(m=>!cl.has(m)).sort((a,b)=>a-b);
+}
+
+
+window.showTab=function(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  if(tab==='balance')renderBalance();
+  if(tab==='expenses')renderExpensesTab();
+  if(tab==='reserva')renderReserva();
+}
+window.showSubtab=function(sub){document.getElementById('subtab-atual').classList.toggle('active',sub==='atual');document.getElementById('subtab-hist').classList.toggle('active',sub==='historico');document.getElementById('subtab-screen-atual').style.display=sub==='atual'?'block':'none';document.getElementById('subtab-screen-historico').style.display=sub==='historico'?'block':'none';if(sub==='historico')renderHistory();}
+
+function currentMonthIdx(){
+  const now=new Date();
+  // offset: 2026=base. Meses desde Jan 2026
+  return (now.getFullYear()-2026)*12+now.getMonth();
+}
+
+function preferredMonth(months){
+  if(!months.length) return new Date().getMonth();
+  const now=currentMonthIdx();
+  // Prioridade: mês atual se disponível, senão o mais próximo futuro, senão o mais recente
+  if(months.includes(now)) return now;
+  const future=months.filter(m=>m>=now);
+  if(future.length) return future[0];
+  return months[months.length-1];
+}
+function renderMonthFilterExp(){
+  const months=activeMonths();
+  const el=document.getElementById('month-filter-exp');
+  if(!months.length){el.innerHTML='';return;}
+  window._amE=preferredMonth(months);
+  el.innerHTML=months.map(m=>`<button class="month-btn ${m===window._amE?'active':''}" onclick="setMonthExp(${m})">${monthLabel(m)}</button>`).join('');
+}
+window.setMonthExp=function(m){window._amE=parseInt(m);document.querySelectorAll('#month-filter-exp .month-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');renderExpenses();renderChart();renderMyStatus();}
+
+// Ícone automático por categoria
+function expIcon(name){
+  const n=name.toLowerCase();
+  if(/mercado|supermercado|compra|feira/.test(n)) return{icon:'ti-shopping-cart',bg:'#E6F4EA',color:'#2E7D32'};
+  if(/aluguel|condom|iptu|casa|apart/.test(n)) return{icon:'ti-home',bg:'#E8F0FE',color:'#1A56DB'};
+  if(/luz|energia|água|agua|gás|gas|conta|internet|tel/.test(n)) return{icon:'ti-bolt',bg:'#FFF8E1',color:'#F59E0B'};
+  if(/restaurante|comida|lanche|pizza|hamburguer|ifood|delivery/.test(n)) return{icon:'ti-tools-kitchen-2',bg:'#FEF3C7',color:'#D97706'};
+  if(/combustível|combustivel|gasolina|uber|99|taxi|transporte/.test(n)) return{icon:'ti-car',bg:'#F3E8FF',color:'#7C3AED'};
+  if(/farmácia|farmacia|remédio|remedio|médico|medico|saúde|saude/.test(n)) return{icon:'ti-heart-plus',bg:'#FFE4E6',color:'#E11D48'};
+  if(/cinema|ingresso|show|netflix|spotify|assinatura/.test(n)) return{icon:'ti-device-tv',bg:'#E0F2FE',color:'#0284C7'};
+  if(/academia|gym|esporte|futebol/.test(n)) return{icon:'ti-run',bg:'#ECFDF5',color:'#059669'};
+  return{icon:'ti-receipt',bg:'#F0F2F5',color:'#6b6b6b'};
+}
+
+function getBenefName(e){
+  const payerIdx=parseInt(e.payer);
+  const b=e.beneficiary;
+  let idx=(b!=null&&b!==undefined&&parseInt(b)!==payerIdx)?parseInt(b):S.members.findIndex((_,i)=>i!==payerIdx);
+  return S.members[idx]?.name||'outro';
+}
+
+function renderExpenses(){
+  const am=parseInt(window._amE);if(isNaN(am)){return;}
+  let exps=getMonthExpsDisplay(am);
+  document.getElementById('month-title').textContent=`Despesas — ${monthLabelFull(am)}`;
+  document.getElementById('exp-count').textContent=`${exps.length} lançamento${exps.length!==1?'s':''}`;
+  const el=document.getElementById('expense-list');
+  if(!exps.length){el.innerHTML='<div class="icard"><div class="empty-state"><i class="ti ti-inbox" style="font-size:26px;display:block;margin-bottom:7px"></i>Nenhuma despesa neste mês</div></div>';return;}
+  const nMem=S.members.length||1;
+  el.innerHTML=exps.map(({exp:e,instIdx,instVal,isPaid,adiantQty,adiantVal,instNum,totalInst})=>{
+    const gi=S.expenses.indexOf(e);
+    const p=S.members[e.payer]||{name:'?'};
+    const isMe=e.payer===myIdx;
+    const totalInstVal = instVal + (adiantVal||0);
+    const isInd=e.splitType==='individual';
+    const {icon,bg,color}=expIcon(e.name);
+
+    let badgeHtml='';
+    if(isPaid) badgeHtml=`<span class="exp-card-badge" style="background:#EAF3DE;color:#27500A"><i class="ti ti-check" style="font-size:10px"></i>Adiantada</span>`;
+    else if(isInd) badgeHtml=`<span class="exp-card-badge" style="background:#FFF0E6;color:#a04000"><i class="ti ti-user" style="font-size:10px"></i>Individual</span>`;
+    else if(e.type==='parcelado') badgeHtml=`<span class="exp-card-badge" style="background:#EDE9FE;color:#5B21B6"><i class="ti ti-calendar-repeat" style="font-size:10px"></i>${instNum}/${totalInst}x</span>`;
+    else badgeHtml=`<span class="exp-card-badge" style="background:#E6F1FB;color:#003087"><i class="ti ti-users" style="font-size:10px"></i>Compartilhada</span>`;
+
+    const adiantBadge=adiantQty>0
+      ?`<span class="exp-card-badge" style="background:#FEF9C3;color:#854D0E;border:1px solid #FDE047"><i class="ti ti-bolt" style="font-size:10px"></i>${adiantQty} adiant.</span>`
+      :'';
+
+    let summary='';
+    let subvalue='';
+    if(isInd){
+      const benef=getBenefName(e);
+      summary=isMe?`Você pagou para <strong>${benef}</strong>`:`<strong>${p.name}</strong> pagou para ${isMe?'você':benef}`;
+      subvalue=`${benef} deve reembolsar`;
+    } else {
+      const porPessoa=totalInstVal/nMem;
+      let summaryBase=isMe?`Você pagou`:`<strong>${p.name}</strong> pagou`;
+      if(adiantQty>0) summaryBase+=` <span style="background:#EDE9FE;color:#5B21B6;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px">+${adiantQty} adiantadas</span>`;
+      else summaryBase+=` • dividido entre ${nMem}`;
+      summary=summaryBase;
+      subvalue=adiantQty>0?`${fmt(instVal)} normal + ${fmt(adiantVal||0)} adiantado · ${fmt(porPessoa)}/pessoa`:`${fmt(porPessoa)} por pessoa`;
+    }
+
+    const valueColor=isInd?'#a04000':'#003087';
+    const dateStr=e.createdAt?`<div class="exp-card-date"><i class="ti ti-clock" style="font-size:9px"></i> ${e.createdAt}</div>`:'';
+
+    return `<div class="exp-card" style="${isInd?'border-left:3px solid #EC6608;':''}${isPaid?'opacity:.55;':''}" >
+      <div class="exp-card-icon" style="background:${bg};color:${color}"><i class="ti ${icon}"></i></div>
+      <div class="exp-card-body">
+        <div class="exp-card-name">${e.name}${badgeHtml}${adiantBadge}</div>
+        <div class="exp-card-summary">${summary}</div>
+        ${dateStr}
+      </div>
+      <div class="exp-card-right">
+        <div class="exp-card-value" style="color:${valueColor}">${fmt(totalInstVal)}</div>
+        <div class="exp-card-subvalue">${subvalue}</div>
+        <div class="exp-actions" style="display:flex;gap:2px">
+          ${e.type==='parcelado'&&!isPaid?`<button class="exp-action-btn" title="Adiantar parcelas" onclick="openAdvance(${gi})"><i class="ti ti-player-skip-forward"></i></button>`:''}
+          <button class="exp-action-btn" title="Editar" onclick="openEdit(${gi})"><i class="ti ti-pencil"></i></button>
+          <button class="exp-action-btn del" title="Excluir" onclick="confirmDel(${gi})"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderChart(){
+  const months=activeMonths();const cl=S.history.map(h=>h.month);
+  const all=[...new Set([...months,...cl])].sort((a,b)=>a-b);
+  if(!all.length){if(barChart){barChart.destroy();barChart=null;}return;}
+  const totals=all.map(mo=>{
+    const h=S.history.find(h=>h.month===mo);
+    if(h)return h.grandTotal;
+    let s=0;
+    const disp=getMonthExpsDisplay(mo);
+    disp.forEach(({instVal,adiantVal,isPaid})=>{if(!isPaid)s+=(instVal+(adiantVal||0));});
+    return Math.round(s*100)/100;
+  });
+  const colors=all.map(mo=>S.history.find(h=>h.month===mo)?'#C0DD97':'#B5D4F4');
+  const borders=all.map(mo=>S.history.find(h=>h.month===mo)?'#3B6D11':'#003087');
+  const ctx=document.getElementById('barChart').getContext('2d');
+  if(barChart)barChart.destroy();
+  barChart=new Chart(ctx,{type:'bar',data:{labels:all.map(m=>monthLabel(m)),datasets:[{label:'Total',data:totals,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#6b6b6b',font:{size:11},autoSkip:false}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6b6b6b',font:{size:11},callback:v=>'R$'+Math.round(v)},beginAtZero:true}}}});
+}
+// ── BADGE NA ABA BALANÇO ──
+function updateBalanceBadge(){
+  const am=window._amB??window._amE??new Date().getMonth();
+  const months=activeMonths();
+  const badge=document.getElementById('balance-badge');
+  if(!badge)return;
+  if(!months.length){badge.style.display='none';return;}
+  const r=calcBal(months[months.length-1]);
+  const hasDebt=r.diffs.some(d=>d<-0.01);
+  badge.style.display=hasDebt?'inline-block':'none';
+  badge.textContent='!';
+}
+
+// ── BANNER MINHA SITUAÇÃO (tela Lançamentos) ──
+function renderMyStatus(){
+  const el=document.getElementById('my-status-wrap');
+  if(!el||!S.members.length)return;
+  const months=activeMonths();
+  if(!months.length){el.innerHTML='';return;}
+  const am=window._amE??months[months.length-1];
+  const r=calcBal(am);
+  const diff=r.diffs[myIdx]??0;
+  const name=S.members[myIdx]?.name||'Você';
+  let cls,icon,mainText,subText;
+  if(diff<-0.01){
+    cls='debt'; icon='⚠️';
+    mainText=`Você deve pagar ${fmt(Math.abs(diff))}`;
+    subText=`Veja quem recebe na aba Balanço`;
+  } else if(diff>0.01){
+    cls='cred'; icon='💰';
+    mainText=`Você tem ${fmt(diff)} a receber`;
+    subText=`Aguarde o acerto dos outros membros`;
+  } else {
+    cls='even'; icon='✅';
+    mainText='Você está em dia este mês';
+    subText='Nenhum acerto necessário';
+  }
+  el.innerHTML=`<div class="my-status-banner ${cls}">
+    <div class="my-status-icon">${icon}</div>
+    <div style="flex:1;min-width:0">
+      <div class="my-status-text-main">${mainText}</div>
+      <div class="my-status-text-sub">${subText}</div>
+    </div>
+    ${diff<-0.01?`<button class="my-status-action" onclick="showTab('balance')">Ver acerto →</button>`:''}
+  </div>`;
+}
+
+// ── BANNER ONBOARDING (grupo com 1 membro) ──
+function renderOnboardBanner(){
+  const el=document.getElementById('onboard-banner-wrap');
+  if(!el)return;
+  const dismissed=sessionStorage.getItem('onboard_dismissed');
+  if(dismissed||S.members.length>1){el.innerHTML='';return;}
+  const link=`${location.origin}${location.pathname}?g=${groupId}`;
+  el.innerHTML=`<div class="onboard-banner">
+    <div class="onboard-banner-icon">👥</div>
+    <div style="flex:1">
+      <div class="onboard-banner-title">Chame alguém para o grupo!</div>
+      <div class="onboard-banner-sub">Você está sozinho por enquanto. Compartilhe o link para começar a dividir gastos.</div>
+      <button class="btn-main" style="font-size:12px;padding:7px 14px" onclick="shareGroupFromBanner()"><i class="ti ti-share"></i>Compartilhar link</button>
+    </div>
+    <button class="onboard-banner-close" onclick="dismissOnboard()"><i class="ti ti-x"></i></button>
+  </div>`;
+}
+window.dismissOnboard=function(){sessionStorage.setItem('onboard_dismissed','1');document.getElementById('onboard-banner-wrap').innerHTML='';}
+window.shareGroupFromBanner=function(){
+  const url=`${location.origin}${location.pathname}?g=${groupId}`;
+  if(navigator.share){navigator.share({title:'AlydiBank',text:'Entre no nosso grupo de divisão de gastos!',url});}
+  else{navigator.clipboard.writeText(url).then(()=>showToast('Link copiado!'));}
+}
+
+// ── FILTRO DE CATEGORIA ──
+const CAT_LABELS={'todos':'Todos','mercado':'🛒 Mercado','casa':'🏠 Casa','contas':'⚡ Contas','comida':'🍔 Comida','transporte':'🚗 Transporte','saude':'❤️ Saúde','lazer':'🎬 Lazer','academia':'🏃 Academia','outros':'📋 Outros'};
+function expCategory(name){
+  const n=name.toLowerCase();
+  if(/mercado|supermercado|compra|feira/.test(n))return 'mercado';
+  if(/aluguel|condom|iptu|casa|apart/.test(n))return 'casa';
+  if(/luz|energia|água|agua|gás|gas|conta|internet|tel/.test(n))return 'contas';
+  if(/restaurante|comida|lanche|pizza|hamburguer|ifood|delivery/.test(n))return 'comida';
+  if(/combustível|combustivel|gasolina|uber|99|taxi|transporte/.test(n))return 'transporte';
+  if(/farmácia|farmacia|remédio|remedio|médico|medico|saúde|saude/.test(n))return 'saude';
+  if(/cinema|ingresso|show|netflix|spotify|assinatura/.test(n))return 'lazer';
+  if(/academia|gym|esporte|futebol/.test(n))return 'academia';
+  return 'outros';
+}
+function renderCatFilter(){
+  const el=document.getElementById('cat-filter');
+  if(!el)return;
+  const am=parseInt(window._amE);
+  if(isNaN(am)){el.innerHTML='';return;}
+  const exps=getMonthExpsDisplay(am);
+  if(!exps.length){el.innerHTML='';return;}
+  const cats=new Set(exps.map(({exp:e})=>expCategory(e.name)));
+  if(cats.size<=1){el.innerHTML='';return;}
+  const all=['todos',...cats];
+  el.innerHTML=all.map(c=>`<button class="cat-btn ${activeCatFilter===c?'active':''}" onclick="setCatFilter('${c}')">${CAT_LABELS[c]||c}</button>`).join('');
+}
+window.setCatFilter=function(c){
+  activeCatFilter=c;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===( CAT_LABELS[c]||c)));
+  renderExpenses();
+}
+
+function renderExpensesTab(){
+  const m=activeMonths();
+  if(window._amE===undefined||!m.includes(parseInt(window._amE)))window._amE=m.length?m[m.length-1]:new Date().getMonth();
+  renderOnboardBanner();
+  renderMyStatus();
+  renderMonthFilterExp();
+  renderExpenses();
+  renderChart();
+  updateBalanceBadge();
+}
+
+function calcBal(month){
+  const dispItems=getMonthExpsDisplay(month);
+  const expsWithVal=dispItems.map(({exp:e,instVal,adiantVal,isPaid})=>({
+    e,
+    val:isPaid?0:(instVal+(adiantVal||0))
+  }));
+
+  const div=expsWithVal.filter(({e})=>e.splitType!=='individual');
+  const ind=expsWithVal.filter(({e})=>e.splitType==='individual');
+
+  const divT=Math.round(div.reduce((s,{val})=>s+val,0)*100)/100;
+  const pp=S.members.length?divT/S.members.length:0;
+
+  // Quanto cada membro pagou de despesas divididas
+  const dp=S.members.map((_,i)=>{
+    let s=0;
+    div.filter(({e})=>parseInt(e.payer)===i).forEach(({val})=>s+=val);
+    return Math.round(s*100)/100;
+  });
+
+  // Individual: payer adiantou para o outro membro
+  // beneficiary pode ser null (novo fluxo) — deduz o outro membro automaticamente
+  function getBenef(e){
+    const payerIdx=parseInt(e.payer);
+    const b=e.beneficiary;
+    // Se beneficiário está definido E não é o próprio pagador, usa ele
+    if(b!=null&&b!==undefined&&parseInt(b)!==payerIdx) return parseInt(b);
+    // Senão deduz: primeiro membro que não é o pagador
+    for(let i=0;i<S.members.length;i++) if(i!==payerIdx) return i;
+    return null;
+  }
+
+  // Quanto cada membro recebeu (beneficiário de individual)
+  const io=S.members.map((_,i)=>{
+    let s=0;
+    ind.filter(({e})=>getBenef(e)===i).forEach(({val})=>s+=val);
+    return Math.round(s*100)/100;
+  });
+  // Quanto cada membro pagou de individual (pagador)
+  const ip=S.members.map((_,i)=>{
+    let s=0;
+    ind.filter(({e})=>parseInt(e.payer)===i).forEach(({val})=>s+=val);
+    return Math.round(s*100)/100;
+  });
+
+  // diff: crédito positivo = tem a receber; negativo = deve
+  // Divididas: quem pagou mais que a cota tem crédito, quem pagou menos deve
+  // Individuais: quem pagou por outro tem crédito, quem foi pago por outro deve
+  const diffs=S.members.map((_,i)=>{
+    const divDiff=dp[i]-pp;          // crédito/débito nas divididas
+    const indDiff=ip[i]-io[i];       // crédito/débito nas individuais
+    return Math.round((divDiff+indDiff)*100)/100;
+  });
+  const gt=Math.round(expsWithVal.reduce((s,{val})=>s+val,0)*100)/100;
+  return{gt,pp,diffs,dp,ip,io};
+}
+function renderMonthFilterBal(){
+  const m=activeMonths();
+  const el=document.getElementById('month-filter-bal');
+  if(!m.length){el.innerHTML='';return;}
+  window._amB=preferredMonth(m);
+  el.innerHTML=m.map(mo=>`<button class="month-btn ${mo===window._amB?'active':''}" onclick="setMonthBal(${mo})">${monthLabel(mo)}</button>`).join('');
+}
+window.setMonthBal=function(m){window._amB=m;document.querySelectorAll('#month-filter-bal .month-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');renderBalContent();}
+function renderBalContent(){
+  const months=activeMonths();
+  const am=window._amB??new Date().getMonth();
+  document.getElementById('bal-month-title').textContent=`Balanço — ${monthLabelFull(am)}`;
+  document.getElementById('confirm-settle-title').textContent=`Encerrar ${monthLabelFull(am)}?`;
+
+  const metricsEl=document.getElementById('balance-metrics');
+  const listEl=document.getElementById('balance-list');
+
+  if(!months.length){
+    metricsEl.innerHTML='';
+    listEl.innerHTML='<div class="empty-state">Todos os meses foram encerrados.</div>';
+    return;
+  }
+
+  const r=calcBal(am);
+  const nMem=S.members.length||1;
+
+  // ── Métricas topo ──
+  metricsEl.innerHTML=`
+    <div class="bal-metric-grid">
+      <div class="bal-metric-card">
+        <div class="bal-metric-label">Total gasto no mês</div>
+        <div class="bal-metric-value">${fmt(r.gt)}</div>
+        <div class="bal-metric-sub">${nMem} pessoa${nMem!==1?'s':''} no grupo</div>
+      </div>
+      <div class="bal-metric-card">
+        <div class="bal-metric-label">Parte de cada um</div>
+        <div class="bal-metric-value">${fmt(r.pp)}</div>
+        <div class="bal-metric-sub">das despesas compartilhadas</div>
+      </div>
+    </div>`;
+
+  // ── Cards por pessoa ──
+  let html='';
+  S.members.forEach((m,i)=>{
+    const diff=r.diffs[i];
+    const isMe=i===myIdx;
+    const isCred=diff>0.01;
+    const isDebt=diff<-0.01;
+    const cardClass=isCred?'is-creditor':isDebt?'is-debtor':'is-even';
+
+    let statusLabel,statusClass,statusIcon;
+    if(isCred){
+      statusLabel=`a receber ${fmt(diff)}`;
+      statusClass='cred';
+      statusIcon='ti-arrow-down-left';
+    } else if(isDebt){
+      statusLabel=`deve pagar ${fmt(Math.abs(diff))}`;
+      statusClass='debt';
+      statusIcon='ti-arrow-up-right';
+    } else {
+      statusLabel='em dia ✓';
+      statusClass='even';
+      statusIcon='';
+    }
+
+    html+=`
+    <div class="bal-person-card ${cardClass}">
+      <div class="bal-person-top">
+        <div class="avatar" style="width:38px;height:38px;font-size:13px;background:${mb(i)};color:${mc(i)};flex-shrink:0">${ini(m.name)}</div>
+        <div>
+          <div class="bal-person-name">${m.name}${isMe?'<span class="me-tag">eu</span>':''}</div>
+          <div style="font-size:11px;color:#6b6b6b;margin-top:1px">${isMe?'você':'membro do grupo'}</div>
+        </div>
+        <div class="bal-person-status ${statusClass}">${statusIcon?`<i class="ti ${statusIcon}" style="font-size:12px"></i>`:''} ${statusLabel}</div>
+      </div>
+      <div class="bal-person-details">
+        <div class="bal-detail-cell">
+          <div class="bal-detail-cell-label">Pagou (compartilhado)</div>
+          <div class="bal-detail-cell-value">${fmt(r.dp[i])}</div>
+        </div>
+        <div class="bal-detail-cell">
+          <div class="bal-detail-cell-label">Pagou (individual)</div>
+          <div class="bal-detail-cell-value">${fmt(r.ip[i])}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // ── Acerto sugerido ──
+  const cred=S.members.map((_,i)=>({i,d:r.diffs[i]})).filter(x=>x.d>0.01).sort((a,b)=>b.d-a.d);
+  const deb=S.members.map((_,i)=>({i,d:r.diffs[i]})).filter(x=>x.d<-0.01).sort((a,b)=>a.d-b.d);
+
+  if(!deb.length&&!cred.length){
+    html+=`<div class="bal-all-even">
+      <i class="ti ti-circle-check-filled" style="font-size:24px;color:#3B6D11;flex-shrink:0"></i>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#27500A">Tudo certo!</div>
+        <div style="font-size:12px;color:#3B6D11;margin-top:2px">Nenhum acerto necessário este mês.</div>
+      </div>
+    </div>`;
+  } else if(deb.length&&cred.length){
+    const debs=deb.map(x=>({...x,rem:-x.d}));
+    const creds=cred.map(x=>({...x,rem:x.d}));
+    let di=0,ci=0;
+    let settleHTML='';
+    while(di<debs.length&&ci<creds.length){
+      const a=Math.min(debs[di].rem,creds[ci].rem);
+      if(a>0.01){
+        const fromMem=S.members[debs[di].i];
+        const toMem=S.members[creds[ci].i];
+        settleHTML+=`
+        <div class="bal-settle-card">
+          <div class="bal-settle-from">
+            <div class="avatar" style="width:34px;height:34px;font-size:12px;background:${mb(debs[di].i)};color:${mc(debs[di].i)};flex-shrink:0">${ini(fromMem.name)}</div>
+            <div>
+              <div class="bal-settle-person">${fromMem.name}</div>
+              <div class="bal-settle-role">quem paga</div>
+            </div>
+          </div>
+          <div class="bal-settle-arrow">
+            <div class="bal-settle-amount">${fmt(a)}</div>
+            <div class="bal-settle-arrow-line"></div>
+          </div>
+          <div class="bal-settle-to">
+            <div style="text-align:right">
+              <div class="bal-settle-person">${toMem.name}</div>
+              <div class="bal-settle-role">quem recebe</div>
+            </div>
+            <div class="avatar" style="width:34px;height:34px;font-size:12px;background:${mb(creds[ci].i)};color:${mc(creds[ci].i)};flex-shrink:0">${ini(toMem.name)}</div>
+          </div>
+        </div>`;
+      }
+      debs[di].rem-=a; creds[ci].rem-=a;
+      if(debs[di].rem<0.01)di++;
+      if(creds[ci].rem<0.01)ci++;
+    }
+    if(settleHTML){
+      html+=`<div class="bal-settle-section">
+        <div class="bal-settle-title"><i class="ti ti-arrows-exchange" style="font-size:14px"></i>Acerto sugerido</div>
+        ${settleHTML}
+      </div>`;
+    }
+  }
+
+  listEl.innerHTML=html||'<div class="empty-state">Nenhuma despesa neste mês.</div>';
+}
+function renderBalance(){renderMonthFilterBal();renderBalContent();}
+
+function renderHistory(){
+  const el=document.getElementById('hist-list');
+  if(!S.history.length){el.innerHTML='<div class="empty-state"><i class="ti ti-archive" style="font-size:26px;display:block;margin-bottom:8px"></i>Nenhum mês encerrado ainda.</div>';return;}
+  el.innerHTML=[...S.history].sort((a,b)=>b.month-a.month).map((h,hi)=>{
+    const myDiff=(h.diffs||[])[myIdx]||0;
+    const myDiffColor=myDiff>=0?'#27500A':'#c0392b';
+    const myDiffLabel=myDiff>0.01?`Você recebeu ${fmt(myDiff)}`:myDiff<-0.01?`Você pagou ${fmt(Math.abs(myDiff))}`:' Você ficou em dia';
+    const myDiffBg=myDiff>0.01?'#EAF3DE':myDiff<-0.01?'#FFE8E5':'#F0F2F5';
+    return `<div class="hist-item">
+      <div class="hist-header" onclick="toggleHist(${hi})">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center"><i class="ti ti-calendar-check" style="font-size:18px;color:#003087"></i></div>
+          <div>
+            <div style="font-size:14px;font-weight:500;color:#003087">${monthLabelFull(h.month)}</div>
+            <div style="font-size:12px;color:#6b6b6b">Total grupo: ${fmt(h.grandTotal)} · <span style="color:${myDiffColor};font-weight:500">${myDiffLabel}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge-closed"><i class="ti ti-lock" style="font-size:11px"></i> Encerrado</span>
+          <button class="btn-outline" style="padding:4px 10px;font-size:11px;border-radius:16px" onclick="confirmReopen(${hi},event)"><i class="ti ti-lock-open" style="font-size:11px"></i> Reabrir</button>
+          <i class="ti ti-chevron-down" style="font-size:16px;color:#6b6b6b;transition:transform .2s" id="hc-${hi}"></i>
+        </div>
+      </div>
+      <div class="hist-body" id="hb-${hi}">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div class="metric-card" style="padding:10px 12px"><div class="metric-label">Total grupo</div><div style="font-size:16px;font-weight:500;color:#fff">${fmt(h.grandTotal)}</div></div>
+          <div class="metric-card" style="padding:10px 12px"><div class="metric-label">Parte de cada um</div><div style="font-size:16px;font-weight:500;color:#fff">${fmt(h.perPerson)}</div></div>
+        </div>
+        ${(h.members||[]).map((m,i)=>`<div class="bal-row"><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:11px;background:${mb(i)};color:${mc(i)}">${ini(m.name)}</div><div style="font-size:13px;font-weight:500;color:#1a1a1a">${m.name}${i===myIdx?'<span class="me-tag">eu</span>':''}</div></div><div style="font-size:13px;font-weight:500;color:${(h.diffs||[])[i]>=0?'#27500A':'#c0392b'}">${(h.diffs||[])[i]>=0?'+':''}${fmt((h.diffs||[])[i]||0)}</div></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+window.toggleHist=function(hi){const b=document.getElementById(`hb-${hi}`);const c=document.getElementById(`hc-${hi}`);const o=b.classList.toggle('open');c.style.transform=o?'rotate(180deg)':'';}
+
+function renderDepChips(){const el=document.getElementById('dep-user-chips');if(!S.members.length){el.innerHTML='<div style="font-size:12px;color:#6b6b6b">Adicione membros na aba Grupo.</div>';return;}if(selDepositor>=S.members.length)selDepositor=0;el.innerHTML=S.members.map((m,i)=>`<button class="dep-chip ${i===selDepositor?'sel':''}" onclick="selDep(${i})">${m.name}</button>`).join('');}
+window.selDep=function(i){selDepositor=i;document.querySelectorAll('.dep-chip').forEach((c,ci)=>c.classList.toggle('sel',ci===i));}
+window.addDeposit=async function(){const inp=document.getElementById('deposit-value');const v=parseFloat(inp.value);if(!v||v<=0){inp.style.borderColor='#c0392b';setTimeout(()=>inp.style.borderColor='#d0d0d0',1200);return;}const d=new Date();S.deposits.push({memberIdx:selDepositor,memberName:S.members[selDepositor]?.name||'?',value:v,month:d.getMonth(),date:d.toLocaleDateString('pt-BR'),time:d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});inp.value='';await save();showToast('Depósito registrado!');}
+
+window.saveGoal=async function(){
+  const inp=document.getElementById('goal-input');
+  const v=parseFloat((inp.value||'').replace(',','.'));
+  if(!v||v<=0){inp.style.borderColor='#c0392b';setTimeout(()=>inp.style.borderColor='#d0d0d0',1200);return;}
+  S.reservaGoal=v;
+  await save();
+  showToast('Meta salva!');
+  renderReservaGoal();
+}
+
+function renderReservaGoal(){
+  const goal=S.reservaGoal||0;
+  const sec=document.getElementById('reserva-goal-section');
+  const bar=document.getElementById('reserva-goal-bar');
+  const lbl=document.getElementById('reserva-goal-label');
+  const inp=document.getElementById('goal-input');
+  if(goal>0&&inp) inp.value=String(goal.toFixed(2)).replace('.',',');
+  if(!sec)return;
+  if(!goal){sec.style.display='none';return;}
+  const total=S.deposits.reduce((a,d)=>a+d.value,0);
+  const pct=Math.min(100,Math.round(total/goal*100));
+  sec.style.display='block';
+  bar.style.width=pct+'%';
+  bar.style.background=pct>=100?'#3B6D11':'#EC6608';
+  lbl.textContent=pct>=100?`Meta atingida! 🎉 (${fmt(total)} / ${fmt(goal)})`:`${pct}% da meta — ${fmt(total)} de ${fmt(goal)}`;
+}
+
+function renderReserva(){
+  renderPixDisplay();
+  renderDepChips();
+  const total=S.deposits.reduce((a,d)=>a+d.value,0);
+  document.getElementById('reserva-total').textContent=fmt(total);
+  document.getElementById('reserva-count').textContent=`${S.deposits.length} depósito${S.deposits.length!==1?'s':''} realizado${S.deposits.length!==1?'s':''}`;
+  renderReservaGoal();
+  const el=document.getElementById('deposit-list');
+  if(!S.deposits.length){
+    el.innerHTML='<div class="empty-state"><i class="ti ti-coins" style="font-size:26px;display:block;margin-bottom:8px"></i>Nenhum depósito ainda.</div>';
+  } else {
+    el.innerHTML=[...S.deposits].reverse().map(d=>`<div class="deposit-item"><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:${mb(d.memberIdx)};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:12px;font-weight:500;color:${mc(d.memberIdx)}">${ini(d.memberName)}</span></div><div><div style="font-size:13px;font-weight:500;color:#1a1a1a">${d.memberName}</div><div style="font-size:11px;color:#6b6b6b">${d.date} às ${d.time}</div></div></div><div style="font-size:14px;font-weight:500;color:#27500A">+${fmt(d.value)}</div></div>`).join('');
+  }
+  renderDepChart();
+}
+function renderDepChart(){if(!S.deposits.length){if(depChart){depChart.destroy();depChart=null;}document.getElementById('dep-chart-legend').innerHTML='';return;}const months=[...new Set(S.deposits.map(d=>d.month))].sort((a,b)=>a-b);const datasets=S.members.map((m,mi)=>({label:m.name,data:months.map(mo=>Math.round(S.deposits.filter(d=>d.memberIdx===mi&&d.month===mo).reduce((s,d)=>s+d.value,0)*100)/100),backgroundColor:mb(mi),borderColor:mc(mi),borderWidth:1.5,borderRadius:5}));document.getElementById('dep-chart-legend').innerHTML=S.members.map((m,mi)=>`<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:${mc(mi)}"></span>${m.name}</span>`).join('');const ctx=document.getElementById('depChart').getContext('2d');if(depChart)depChart.destroy();depChart=new Chart(ctx,{type:'bar',data:{labels:months.map(m=>monthLabel(m)),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#6b6b6b',font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6b6b6b',font:{size:11},callback:v=>'R$'+Math.round(v)},beginAtZero:true}}}});}
+
+function renderMemberList(){const el=document.getElementById('member-list');if(!S.members.length){el.innerHTML='<div class="empty-state">Nenhum membro.</div>';return;}el.innerHTML=S.members.map((m,i)=>`<div class="member-item"><div class="avatar" style="width:38px;height:38px;font-size:13px;background:${mb(i)};color:${mc(i)};flex-shrink:0">${ini(m.name)}</div><input class="member-name-input" value="${m.name}" onchange="renameMember(${i},this.value)" style="flex:1"/>${i===myIdx?`<span style="font-size:11px;color:#6b6b6b;background:#F0F2F5;padding:3px 8px;border-radius:12px;white-space:nowrap">Você</span>`:''}</div>`).join('');}
+window.renameMember=async function(i,v){if(!v.trim())return;S.members[i].name=v.trim();await save();}
+window.addMember=async function(){const inp=document.getElementById('new-member-input');const name=inp.value.trim();if(!name)return;if(S.members.find(m=>m.name.toLowerCase()===name.toLowerCase())){showToast('Já existe um membro com esse nome');return;}S.members.push({name});inp.value='';await save();showToast('Membro adicionado!');}
+
+// ── WIZARD DESPESA ──
+let wizStep=1;
+const WIZ_TOTAL=5;
+
+function wizUpdateDots(){
+  const el=document.getElementById('step-dots');
+  el.innerHTML=Array.from({length:WIZ_TOTAL},(_,i)=>`<div class="step-dot ${i+1===wizStep?'active':i+1<wizStep?'done':''}"></div>`).join('');
+}
+
+function wizShowStep(n){
+  for(let i=1;i<=WIZ_TOTAL;i++) document.getElementById('wiz-step'+i).style.display=i===n?'block':'none';
+  wizStep=n; wizUpdateDots();
+}
+
+function wizGo(n){
+  // Validações ao avançar
+  if(n>wizStep){
+    if(wizStep===1&&!splitType){showToast('Selecione o tipo de despesa');return;}
+    if(wizStep===2&&selPayer===null){showToast('Selecione quem está pagando');return;}
+    if(wizStep===3){
+      if(!document.getElementById('expense-name').value.trim()){showToast('Informe o nome da despesa');return;}
+      const v=parseFloat(document.getElementById('expense-value').value.replace(',','.'));
+      if(!v||v<=0){showToast('Informe um valor válido');return;}
+    }
+    if(wizStep===4){
+      if(payType==='parcelado'){
+        const p=parseInt(document.getElementById('inst-count').value);
+        if(!p||p<2){showToast('Informe o número de parcelas (mín. 2)');return;}
+      }
+    }
+  }
+  if(n===2) wizRenderPayer();
+  if(n===5) wizRenderResumo();
+  wizShowStep(n);
+}
+
+function wizSetSplit(t){
+  splitType=t;
+  document.getElementById('wiz-opt-dividida').className='step-opt'+(t==='dividida'?' sel':'');
+  document.getElementById('wiz-opt-individual').className='step-opt'+(t==='individual'?' sel-ind':'');
+  ['dividida','individual'].forEach(id=>{
+    const btn=document.getElementById('wiz-opt-'+id);
+    const sel=(id===t);
+    const chk=btn.querySelector('.step-opt-check');
+    chk.style.background=sel?(id==='dividida'?'#003087':'#EC6608'):'';
+    chk.style.borderColor=sel?(id==='dividida'?'#003087':'#EC6608'):'#d0d0d0';
+    chk.style.color=sel?'#fff':'transparent';
+  });
+}
+
+function wizSelBenef(i){selBenef=i;document.querySelectorAll('#wiz-benef-chips .pchip').forEach((c,ci)=>c.classList.toggle('sel',ci===i));}
+
+function wizRenderPayer(){
+  const el=document.getElementById('wiz-payer-chips');
+  if(!el)return;
+  el.innerHTML=S.members.map((m,i)=>`
+    <div onclick="wizSelPayer(${i})" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;cursor:pointer;border:1.5px solid ${i===selPayer?'#003087':'#d0d0d0'};background:${i===selPayer?'#E6F1FB':'#fff'};transition:all .15s">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;background:${mb(i)};color:${mc(i)};flex-shrink:0">${ini(m.name)}</div>
+      <div style="flex:1;font-size:14px;font-weight:500;color:#1a1a1a">${m.name}${i===myIdx?' <span style="font-size:11px;color:#6b6b6b;font-weight:400">(eu)</span>':''}</div>
+      ${i===selPayer?'<i class="ti ti-check" style="color:#003087;font-size:18px"></i>':''}
+    </div>
+  `).join('');
+}
+
+function wizTogglePicker(){} // mantido por compatibilidade
+
+function wizSelPayer(i){
+  selPayer=i;
+  // Se despesa individual, garantir que beneficiário não é o pagador
+  if(splitType==='individual'&&selBenef===i){
+    selBenef=S.members.findIndex((_,idx)=>idx!==i);
+    if(selBenef<0)selBenef=0;
+  }
+  wizRenderPayer();
+}
+
+function wizSetPayType(t){
+  payType=t;
+  document.getElementById('wiz-opt-avista').className='step-opt'+(t==='avista'?' sel':'');
+  document.getElementById('wiz-opt-parc').className='step-opt'+(t==='parcelado'?' sel':'');
+  // fix check marks
+  ['avista','parc'].forEach(id=>{
+    const btn=document.getElementById('wiz-opt-'+id);
+    const sel=(id==='avista'&&t==='avista')||(id==='parc'&&t==='parcelado');
+    const chk=btn.querySelector('.step-opt-check');
+    chk.style.background=sel?'#003087':'';
+    chk.style.borderColor=sel?'#003087':'#d0d0d0';
+    chk.style.color=sel?'#fff':'transparent';
+  });
+  document.getElementById('wiz-inst-row').style.display=t==='parcelado'?'block':'none';
+}
+
+function wizRenderResumo(){
+  const name=document.getElementById('expense-name').value.trim();
+  const value=parseFloat(document.getElementById('expense-value').value.replace(',','.'))||0;
+  const month=parseInt(document.getElementById('expense-month').value);
+  const inst=payType==='parcelado'?Math.max(2,parseInt(document.getElementById('inst-count').value)||2):1;
+  const payer=S.members[selPayer]?.name||'—';
+  const benef=splitType==='individual'?(S.members[selBenef]?.name||'—'):'Todos';
+  const mLabel=document.getElementById('expense-month').options[month]?.text||'—';
+  const fv=v=>`R$ ${v.toFixed(2).replace('.',',')}`;
+  let rows=`
+    <div class="step-resumo-row"><span class="step-resumo-label">Tipo</span><span class="step-resumo-value">${splitType==='dividida'?'Dividida':'Individual'}</span></div>
+    <div class="step-resumo-row"><span class="step-resumo-label">Quem pagou</span><span class="step-resumo-value">${payer}</span></div>
+    ${splitType==='individual'?`<div class="step-resumo-row"><span class="step-resumo-label">Despesa de</span><span class="step-resumo-value">${benef}</span></div>`:''}
+    <div class="step-resumo-row"><span class="step-resumo-label">Despesa</span><span class="step-resumo-value">${name||'—'}</span></div>
+    <div class="step-resumo-row"><span class="step-resumo-label">Valor total</span><span class="step-resumo-value">${fv(value)}</span></div>
+    <div class="step-resumo-row"><span class="step-resumo-label">Mês de início</span><span class="step-resumo-value">${mLabel}</span></div>
+    <div class="step-resumo-row"><span class="step-resumo-label">Pagamento</span><span class="step-resumo-value">${payType==='avista'?'À vista':`Parcelado ${inst}x de ${fv(value/inst)}`}</span></div>
+    ${splitType==='dividida'&&S.members.length>1?`<div class="step-resumo-row"><span class="step-resumo-label">Por pessoa</span><span class="step-resumo-value">${fv(value/S.members.length)}</span></div>`:''}
+  `;
+  document.getElementById('wiz-resumo').innerHTML=rows;
+}
+
+function populateExpenseMonthSelect(){
+  const closed=new Set(S.history.map(h=>h.month));
+  const sel=document.getElementById('expense-month');
+  if(!sel)return;
+  // Meses disponíveis: atual + próximos 12, excluindo encerrados
+  const now=currentMonthIdx();
+  const options=[];
+  for(let i=0;i<24;i++){
+    if(!closed.has(i)) options.push(i);
+  }
+  // Default: mês vigente ou o próximo disponível
+  const defaultMonth=options.includes(now)?now:(options.find(m=>m>=now)??options[0]??now);
+  sel.innerHTML=options.map(m=>`<option value="${m}">${monthLabelFull(m)}</option>`).join('');
+  sel.value=defaultMonth;
+}
+
+function resetModal(){
+  selPayer=myIdx; selBenef=0; splitType='dividida'; payType='avista';
+  document.getElementById('expense-name').value='';
+  document.getElementById('expense-value').value='';
+  document.getElementById('inst-count').value='2';
+  populateExpenseMonthSelect();
+  wizSetSplit('dividida');
+  wizSetPayType('avista');
+  wizShowStep(1);
+}
+window.openModal=function(){
+  editingExpIdx=null;
+  document.getElementById('modal-save-btn').textContent='Salvar despesa';
+  resetModal();
+  document.getElementById('modal-bg').classList.add('open');
+}
+// ── EDIT MODAL (tela única) ──
+let editSplitType='dividida', editPayType='avista', editSelPayer=0, editingIdx=null;
+
+function editUpdatePayer(){
+  const m=S.members[editSelPayer]||{name:'?'};
+  const av=document.getElementById('edit-payer-avatar');
+  av.style.background=mb(editSelPayer); av.style.color=mc(editSelPayer);
+  av.textContent=ini(m.name);
+  document.getElementById('edit-payer-name').textContent=m.name+(editSelPayer===myIdx?' (eu)':'');
+}
+function editTogglePicker(){
+  const p=document.getElementById('edit-payer-picker');
+  const open=p.style.display!=='none';
+  p.style.display=open?'none':'block';
+  if(!open) document.getElementById('edit-payer-chips').innerHTML=S.members.map((m,i)=>`<button class="pchip ${i===editSelPayer?'sel':''}" onclick="editSelPayer2(${i})">${m.name}${i===myIdx?' (eu)':''}</button>`).join('');
+}
+window.editSelPayer2=function(i){editSelPayer=i;document.querySelectorAll('#edit-payer-chips .pchip').forEach((c,ci)=>c.classList.toggle('sel',ci===i));editUpdatePayer();document.getElementById('edit-payer-picker').style.display='none';}
+window.editSetSplit=function(t){editSplitType=t;document.getElementById('edit-split-div').className='split-btn'+(t==='dividida'?' sel':'');document.getElementById('edit-split-ind').className='split-btn'+(t==='individual'?' sel-ind':'');}
+window.editSetType=function(t){editPayType=t;document.getElementById('edit-btn-avista').classList.toggle('sel',t==='avista');document.getElementById('edit-btn-parc').classList.toggle('sel',t==='parcelado');document.getElementById('edit-inst-row').classList.toggle('show',t==='parcelado');}
+window.editTogglePicker=editTogglePicker;
+window.closeEditModal=function(){document.getElementById('edit-modal-bg').classList.remove('open');editingIdx=null;}
+window.openEdit=function(idx){
+  const e=S.expenses[idx];if(!e)return;
+  editingIdx=idx;
+  editSelPayer=e.payer; editSplitType=e.splitType||'dividida'; editPayType=e.type;
+  // Popula select de mês sem meses encerrados (mas inclui o mês atual da despesa)
+  const closed=new Set(S.history.map(h=>h.month));
+  const sel=document.getElementById('edit-expense-month');
+  const options=[];
+  for(let i=0;i<24;i++){if(!closed.has(i)||i===e.month)options.push(i);}
+  sel.innerHTML=options.map(m=>`<option value="${m}">${monthLabelFull(m)}</option>`).join('');
+  document.getElementById('edit-expense-name').value=e.name;
+  document.getElementById('edit-expense-value').value=String(e.value.toFixed(2)).replace('.',',');
+  sel.value=e.month;
+  document.getElementById('edit-inst-count').value=e.inst||2;
+  window.editSetSplit(editSplitType);
+  window.editSetType(editPayType);
+  document.getElementById('edit-payer-picker').style.display='none';
+  editUpdatePayer();
+  document.getElementById('edit-modal-bg').classList.add('open');
+}
+window.saveEditExpense=async function(){
+  const name=document.getElementById('edit-expense-name').value.trim();
+  const value=parseFloat(document.getElementById('edit-expense-value').value.replace(',','.'));
+  const month=parseInt(document.getElementById('edit-expense-month').value);
+  const inst=editPayType==='parcelado'?Math.max(2,parseInt(document.getElementById('edit-inst-count').value)||2):1;
+  if(!name){showToast('Informe o nome da despesa');return;}
+  if(!value||value<=0){showToast('Informe um valor válido');return;}
+  S.expenses[editingIdx]={...S.expenses[editingIdx],payer:editSelPayer,name,value,month,type:editPayType,inst,splitType:editSplitType};
+  window.closeEditModal();
+  window._amE=month;
+  await save();
+  showToast('Despesa atualizada!');
+}
+window.closeModal=function(){document.getElementById('modal-bg').classList.remove('open');editingExpIdx=null;}
+window.closeModalOutside=function(e){if(e.target.id==='modal-bg')window.closeModal();}
+// Manter compatibilidade com funções antigas (usadas em openEdit)
+window.openPayerPicker=function(){wizTogglePicker();}
+window.selPayer2=function(i){wizSelPayer(i);}
+window.selBenef2=function(i){wizSelBenef(i);}
+window.setType=function(t){wizSetPayType(t);}
+window.setSplitType=function(t){wizSetSplit(t);}
+function updatePD(){wizRenderPayer();}
+
+// Expor funções do wizard para o escopo global (necessário por ser type="module")
+window.wizGo=wizGo;
+window.wizSetSplit=wizSetSplit;
+window.wizSelBenef=wizSelBenef;
+window.wizTogglePicker=wizTogglePicker;
+window.wizSelPayer=wizSelPayer;
+window.wizSetPayType=wizSetPayType;
+window.fmtValInput=function(inp){
+  // Remove tudo que não for dígito
+  let digits=inp.value.replace(/\D/g,'');
+  if(!digits){inp.value='';return;}
+  // Trata como centavos: últimos 2 dígitos = centavos
+  const cents=parseInt(digits,10);
+  const reais=(cents/100).toFixed(2);
+  inp.value=reais.replace('.',',');
+};
+window.saveExpense=async function(){
+  const name=document.getElementById('expense-name').value.trim();
+  const value=parseFloat(document.getElementById('expense-value').value.replace(',','.'));
+  const month=parseInt(document.getElementById('expense-month').value);
+  const inst=payType==='parcelado'?Math.max(2,parseInt(document.getElementById('inst-count').value)||2):1;
+  if(!name){showToast('Informe o nome da despesa');return;}
+  if(!value||value<=0){showToast('Informe um valor válido');return;}
+  const now=new Date();
+  const createdAt=now.toLocaleDateString('pt-BR')+' às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  // Beneficiário: para individual, garante que não é o próprio pagador
+  let benef=null;
+  if(splitType==='individual'){
+    benef=selBenef!==selPayer?selBenef:S.members.findIndex((_,i)=>i!==selPayer);
+    if(benef<0)benef=null;
+  }
+  const obj={payer:selPayer,name,value,month,type:payType,inst,splitType,beneficiary:benef,paidInsts:editingExpIdx!==null?(S.expenses[editingExpIdx].paidInsts||[]):[],createdAt};
+  if(editingExpIdx!==null){S.expenses[editingExpIdx]={...obj,createdAt:S.expenses[editingExpIdx].createdAt||createdAt};showToast('Despesa atualizada!');}
+  else{S.expenses.push(obj);showToast('Despesa salva!');}
+  window.closeModal();window._amE=month;await save();
+}
+
+// FIX 3: deletar
+window.confirmDel=function(idx){deletingExpIdx=idx;const e=S.expenses[idx];document.getElementById('confirm-delete-sub').textContent=`"${e?.name}" — ${fmt(e?.value||0)}. Esta ação não pode ser desfeita.`;document.getElementById('confirm-delete').classList.add('open');}
+window.doDeleteExpense=async function(){if(deletingExpIdx===null)return;S.expenses.splice(deletingExpIdx,1);deletingExpIdx=null;closeConfirm('confirm-delete');await save();showToast('Despesa excluída.');}
+
+// FIX 4: adiantar parcelas
+window.openAdvance=function(idx){const e=S.expenses[idx];if(!e||e.type!=='parcelado')return;const inst=parseInt(e.inst)||1;const month=parseInt(e.month);advExpIdx=idx;advPaid=new Set((e.paidInsts||[]).map(Number));document.getElementById('advance-modal-title').textContent=`Adiantar — ${e.name}`;document.getElementById('advance-modal-sub').textContent=`${inst}x de ${fmt(Number(e.value)/inst)} · Início: ${monthLabelFull(month)}`;document.getElementById('advance-inst-list').innerHTML=Array.from({length:inst},(_,i)=>{const paid=advPaid.has(i);return `<button class="inst-badge ${paid?'paid':''}" id="ib-${i}" onclick="toggleInst(${i})">${monthLabel(month+i)}${paid?' ✓':''}</button>`;}).join('');document.getElementById('advance-modal-bg').classList.add('open');}
+window.toggleInst=function(i){const btn=document.getElementById(`ib-${i}`);const e=S.expenses[advExpIdx];const lbl=monthLabel(parseInt(e.month)+i);if(advPaid.has(i)){advPaid.delete(i);btn.className='inst-badge';btn.textContent=lbl;}else{advPaid.add(i);btn.className='inst-badge paid';btn.textContent=lbl+' ✓';}}
+window.saveAdvance=async function(){
+  if(advExpIdx===null)return;
+  S.expenses[advExpIdx].paidInsts=[...advPaid];
+  closeAdvanceModal();
+  await save();
+  showToast('Parcelas atualizadas!');
+}
+window.closeAdvanceModal=function(){document.getElementById('advance-modal-bg').classList.remove('open');advExpIdx=null;}
+window.closeAdvanceOutside=function(e){if(e.target.id==='advance-modal-bg')window.closeAdvanceModal();}
+
+window.confirmSettle=function(){document.getElementById('confirm-settle').classList.add('open');}
+window.confirmReset=function(){document.getElementById('confirm-reset').classList.add('open');}
+window.closeConfirm=function(id){document.getElementById(id).classList.remove('open');}
+window.doSettle=async function(){const am=window._amB??new Date().getMonth();const r=calcBal(am);S.history.push({month:am,grandTotal:r.gt,perPerson:r.pp,diffs:[...r.diffs],members:S.members.map(m=>({...m}))});window.closeConfirm('confirm-settle');await save();showToast('Mês encerrado!');}
+window.doReset=async function(){S.expenses=[];S.history=[];S.deposits=[];window.closeConfirm('confirm-reset');await save();showToast('Dados apagados.');}
+
+let reopenIdx=null;
+window.confirmReopen=function(hi,evt){evt&&evt.stopPropagation();reopenIdx=hi;const h=S.history[[...S.history].sort((a,b)=>b.month-a.month)[hi]?hi:hi];const sorted=[...S.history].sort((a,b)=>b.month-a.month);const item=sorted[hi];document.getElementById('confirm-reopen-sub').textContent=`${monthLabelFull(item.month)} voltará para Atual e poderá ser editado novamente.`;reopenIdx=S.history.indexOf(item);document.getElementById('confirm-reopen').classList.add('open');}
+window.doReopen=async function(){if(reopenIdx===null)return;S.history.splice(reopenIdx,1);reopenIdx=null;closeConfirm('confirm-reopen');await save();showToast('Mês reaberto!');}
+
+function persistGroupInUrl(gid, uName){
+  const url=new URL(location.href);
+  url.searchParams.set('g',gid);
+  if(uName) url.searchParams.set('u',uName);
+  history.replaceState(null,'',url.toString());
+}
+
+async function init(){
+  const params=new URLSearchParams(location.search);
+  const gUrl=params.get('g');
+  const uUrl=params.get('u');
+  const deviceId=getDeviceId();
+  const lastGroup=getStore('lastGroup');
+
+  if(gUrl){
+    groupId=gUrl;
+    const savedName=getStore(storageKey(groupId));
+    const savedGroup=allSavedGroups().find(g=>g.id===gUrl);
+    let resolvedName=savedName||uUrl||savedGroup?.user||null;
+
+    // Se não achou localmente, busca no Firebase pelo deviceId
+    if(!resolvedName){
+      try{
+        const snap=await getDoc(doc(db,'groups',groupId));
+        if(snap.exists()){
+          const devices=snap.data().devices||{};
+          if(devices[deviceId]) resolvedName=devices[deviceId];
+        }
+      }catch(e){}
+    }
+
+    if(resolvedName){
+      myName=resolvedName;
+      setStore(storageKey(groupId),myName);
+      setStore('lastGroup',groupId);
+      setLoader('Carregando grupo...');
+      document.getElementById('join-screen').classList.add('hidden');
+      document.getElementById('loader').classList.remove('hidden');
+      await joinAndListen();
+    } else {
+      document.getElementById('join-code-input').value=location.href;
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('join-screen').classList.remove('hidden');
+      renderSavedGroups();
+    }
+  } else if(lastGroup&&getStore(storageKey(lastGroup))){
+    groupId=lastGroup; myName=getStore(storageKey(lastGroup));
+    persistGroupInUrl(groupId,myName);
+    setLoader('Carregando grupo...');
+    startListening();
+  } else {
+    // Tenta recuperar pelo deviceId — busca em todos os grupos salvos no Firebase
+    const savedGroups=allSavedGroups();
+
+    // Primeiro tenta da lista local
+    if(savedGroups.length>0){
+      const last=savedGroups[0];
+      groupId=last.id; myName=last.user;
+      persistGroupInUrl(groupId,myName);
+      setStore(storageKey(groupId),myName);
+      setStore('lastGroup',groupId);
+      setLoader('Carregando grupo...');
+      document.getElementById('join-screen').classList.add('hidden');
+      startListening();
+    } else {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('join-screen').classList.remove('hidden');
+      renderSavedGroups();
+    }
+  }
+}
+
+const cs=document.createElement('script');cs.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';cs.onload=()=>init();document.head.appendChild(cs);
+</script>
+</body>
+</html>
