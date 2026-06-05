@@ -326,16 +326,34 @@ body{background:#F0F2F5;min-height:100vh;min-height:-webkit-fill-available;overf
       <div style="font-size:13px;font-weight:500;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Criar novo grupo</div>
       <div class="field" style="margin-bottom:10px"><label>Nome do grupo</label><input type="text" id="new-group-name" placeholder="Ex: Namorado, Mãe, Casa..."/></div>
       <div class="field" style="margin-bottom:10px"><label>Seu nome</label><input type="text" id="new-user-name" placeholder="Como quer ser chamado..."/></div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Seu PIN <span style="font-size:11px;color:#6b6b6b;font-weight:400">(4 dígitos — para entrar no app)</span></label>
+        <input type="number" id="new-user-pin" placeholder="Ex: 1234" maxlength="4" style="letter-spacing:6px;font-size:20px;text-align:center" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"/>
+      </div>
       <button class="btn-main" style="width:100%;justify-content:center" onclick="createGroup()"><i class="ti ti-plus"></i>Criar grupo</button>
     </div>
     <div class="join-or">ou entre em um grupo existente</div>
     <div>
       <div style="font-size:13px;font-weight:500;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Entrar com link</div>
       <div class="field" style="margin-bottom:8px"><label>Seu nome</label><input type="text" id="join-user-name" placeholder="Como quer ser chamado..."/></div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Seu PIN <span style="font-size:11px;color:#6b6b6b;font-weight:400">(4 dígitos)</span></label>
+        <input type="number" id="join-user-pin" placeholder="Ex: 1234" maxlength="4" style="letter-spacing:6px;font-size:20px;text-align:center" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"/>
+      </div>
       <div style="display:flex;gap:8px">
         <input type="text" class="join-input" id="join-code-input" placeholder="Cole o link aqui..." style="flex:1"/>
         <button class="btn-outline" onclick="joinGroup()"><i class="ti ti-login"></i>Entrar</button>
       </div>
+    </div>
+
+    <div class="join-or">ou acesse com seu PIN</div>
+    <div>
+      <div style="font-size:13px;font-weight:500;color:#6b6b6b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Já tenho conta</div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Seu PIN</label>
+        <input type="number" id="login-pin" placeholder="Digite seu PIN" maxlength="4" style="letter-spacing:6px;font-size:20px;text-align:center" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"/>
+      </div>
+      <button class="btn-outline" style="width:100%;justify-content:center" onclick="loginWithPin()"><i class="ti ti-login"></i>Entrar com PIN</button>
     </div>
   </div>
 </div>
@@ -847,21 +865,26 @@ window.switchGroup=function(){
 window.createGroup=async function(){
   const gName=document.getElementById('new-group-name').value.trim();
   const uName=document.getElementById('new-user-name').value.trim();
+  const pin=document.getElementById('new-user-pin').value.trim();
   if(!gName||!uName){showToast('Preencha o nome do grupo e seu nome');return;}
+  if(!pin||pin.length<4){showToast('Crie um PIN de 4 dígitos');return;}
   setLoader('Criando grupo...');
   document.getElementById('join-screen').classList.add('hidden');
   document.getElementById('loader').classList.remove('hidden');
   groupId=genId();myName=uName;
-  await setDoc(doc(db,'groups',groupId),{groupName:gName,members:[{name:uName}],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,createdAt:Date.now()});
-  setStore(storageKey(groupId),myName);
-  setStore('lastGroup',groupId);
+  await setDoc(doc(db,'groups',groupId),{groupName:gName,members:[{name:uName}],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,createdAt:Date.now(),pins:{[pin]:{name:uName,groups:[groupId]}}});
+  await setStore(storageKey(groupId),myName);
+  await setStore('lastGroup',groupId);
+  await setStore('userPin',pin);
   saveGroupToList(groupId,gName,uName);
   startListening();
 }
 
 window.joinGroup=async function(){
   const uName=document.getElementById('join-user-name').value.trim();
+  const pin=document.getElementById('join-user-pin').value.trim();
   if(!uName){showToast('Informe seu nome antes de entrar');return;}
+  if(!pin||pin.length<4){showToast('Crie um PIN de 4 dígitos');return;}
   let input=document.getElementById('join-code-input').value.trim();
   const match=input.match(/[?&]g=([a-z0-9]+)/i)||input.match(/([a-z0-9]{6,})/i);
   const gid=match?match[1]:input;
@@ -870,7 +893,49 @@ window.joinGroup=async function(){
   document.getElementById('join-screen').classList.add('hidden');
   document.getElementById('loader').classList.remove('hidden');
   setLoader('Entrando no grupo...');
+  await setStore('userPin',pin);
   await joinAndListen();
+}
+
+window.loginWithPin=async function(){
+  const pin=document.getElementById('login-pin').value.trim();
+  if(!pin||pin.length<4){showToast('Digite seu PIN de 4 dígitos');return;}
+  setLoader('Buscando seus grupos...');
+  document.getElementById('join-screen').classList.add('hidden');
+  document.getElementById('loader').classList.remove('hidden');
+  // Busca grupos pelo PIN no Firebase
+  try{
+    const {getDocs,collection,query,where}=await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    // Busca todos os grupos onde o PIN existe
+    // Como não temos query direta, busca na lista local primeiro
+    const savedGroups=await allSavedGroups();
+    if(savedGroups.length>0){
+      // Tenta verificar o PIN em cada grupo salvo
+      for(const g of savedGroups){
+        const snap=await getDoc(doc(db,'groups',g.id));
+        if(snap.exists()){
+          const pins=snap.data().pins||{};
+          if(pins[pin]){
+            groupId=g.id; myName=pins[pin].name;
+            await setStore(storageKey(groupId),myName);
+            await setStore('lastGroup',groupId);
+            await setStore('userPin',pin);
+            saveGroupToList(groupId,snap.data().groupName||groupId,myName);
+            startListening();
+            return;
+          }
+        }
+      }
+    }
+    showToast('PIN não encontrado. Verifique e tente novamente.');
+    document.getElementById('join-screen').classList.remove('hidden');
+    document.getElementById('loader').classList.add('hidden');
+    await renderSavedGroups();
+  }catch(e){
+    showToast('Erro ao buscar. Tente novamente.');
+    document.getElementById('join-screen').classList.remove('hidden');
+    document.getElementById('loader').classList.add('hidden');
+  }
 }
 
 // ── DEVICE ID: identificador único do dispositivo salvo em cookie ──
@@ -899,10 +964,14 @@ async function joinAndListen(){
   const deviceId=getDeviceId();
   const devices=data.devices||{};
   devices[deviceId]=myName;
-  await updateDoc(ref,{devices});
-  setStore(storageKey(groupId),myName);
-  setStore('lastGroup',groupId);
-  saveGroupToList(groupId,data.groupName||groupId,myName);
+  // Salva PIN se disponível
+  const savedPin=await getStore('userPin');
+  const pins=data.pins||{};
+  if(savedPin) pins[savedPin]={name:myName};
+  await updateDoc(ref,{devices, pins});
+  await setStore(storageKey(groupId),myName);
+  await setStore('lastGroup',groupId);
+  await saveGroupToList(groupId,data.groupName||groupId,myName);
   startListening();
 }
 
@@ -916,7 +985,6 @@ function startListening(){
     S=snap.data();
     S.members=S.members||[];S.expenses=S.expenses||[];S.history=S.history||[];S.deposits=S.deposits||[];S.reservaGoal=S.reservaGoal||0;
     myIdx=Math.max(0,S.members.findIndex(m=>m.name===myName));
-    // Atualiza nome do grupo na lista salva
     saveGroupToList(groupId,S.groupName||groupId,myName);
     document.getElementById('loader').classList.add('hidden');
     document.getElementById('join-screen').classList.add('hidden');
@@ -1862,6 +1930,7 @@ async function init(){
   const uUrl=params.get('u');
   const deviceId=getDeviceId();
   const lastGroup=await getStore('lastGroup');
+  const savedPin=await getStore('userPin');
 
   if(gUrl){
     groupId=gUrl;
@@ -1870,12 +1939,16 @@ async function init(){
     const savedGroup=savedGroups.find(g=>g.id===gUrl);
     let resolvedName=savedName||uUrl||savedGroup?.user||null;
 
-    if(!resolvedName){
+    // Tenta pelo PIN salvo
+    if(!resolvedName&&savedPin){
       try{
         const snap=await getDoc(doc(db,'groups',groupId));
         if(snap.exists()){
+          const pins=snap.data().pins||{};
+          if(pins[savedPin]) resolvedName=pins[savedPin].name;
+          // Também tenta deviceId
           const devices=snap.data().devices||{};
-          if(devices[deviceId]) resolvedName=devices[deviceId];
+          if(!resolvedName&&devices[deviceId]) resolvedName=devices[deviceId];
         }
       }catch(e){}
     }
@@ -1899,6 +1972,30 @@ async function init(){
     persistGroupInUrl(groupId,myName);
     setLoader('Carregando grupo...');
     startListening();
+  } else if(savedPin){
+    // Tenta recuperar todos os grupos pelo PIN no Firebase
+    setLoader('Recuperando seus grupos...');
+    const savedGroups=await allSavedGroups();
+    for(const g of savedGroups){
+      try{
+        const snap=await getDoc(doc(db,'groups',g.id));
+        if(snap.exists()){
+          const pins=snap.data().pins||{};
+          if(pins[savedPin]){
+            groupId=g.id; myName=pins[savedPin].name;
+            await setStore(storageKey(groupId),myName);
+            await setStore('lastGroup',groupId);
+            persistGroupInUrl(groupId,myName);
+            saveGroupToList(groupId,snap.data().groupName||groupId,myName);
+            startListening();
+            return;
+          }
+        }
+      }catch(e){}
+    }
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('join-screen').classList.remove('hidden');
+    await renderSavedGroups();
   } else {
     const savedGroups=await allSavedGroups();
     if(savedGroups.length>0){
