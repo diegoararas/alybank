@@ -872,11 +872,13 @@ window.createGroup=async function(){
   document.getElementById('join-screen').classList.add('hidden');
   document.getElementById('loader').classList.remove('hidden');
   groupId=genId();myName=uName;
-  await setDoc(doc(db,'groups',groupId),{groupName:gName,members:[{name:uName}],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,createdAt:Date.now(),pins:{[pin]:{name:uName,groups:[groupId]}}});
+  await setDoc(doc(db,'groups',groupId),{groupName:gName,members:[{name:uName}],expenses:[],history:[],deposits:[],pixKey:'',pixInst:'',pixSaved:false,createdAt:Date.now()});
+  // Salva PIN na coleção separada
+  await setDoc(doc(db,'pins',pin),{name:uName,groups:[groupId]},{merge:true});
   await setStore(storageKey(groupId),myName);
   await setStore('lastGroup',groupId);
   await setStore('userPin',pin);
-  saveGroupToList(groupId,gName,uName);
+  await saveGroupToList(groupId,gName,uName);
   startListening();
 }
 
@@ -903,35 +905,40 @@ window.loginWithPin=async function(){
   setLoader('Buscando seus grupos...');
   document.getElementById('join-screen').classList.add('hidden');
   document.getElementById('loader').classList.remove('hidden');
-  // Busca grupos pelo PIN no Firebase
   try{
-    const {getDocs,collection,query,where}=await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    // Busca todos os grupos onde o PIN existe
-    // Como não temos query direta, busca na lista local primeiro
-    const savedGroups=await allSavedGroups();
-    if(savedGroups.length>0){
-      // Tenta verificar o PIN em cada grupo salvo
-      for(const g of savedGroups){
-        const snap=await getDoc(doc(db,'groups',g.id));
-        if(snap.exists()){
-          const pins=snap.data().pins||{};
-          if(pins[pin]){
-            groupId=g.id; myName=pins[pin].name;
-            await setStore(storageKey(groupId),myName);
-            await setStore('lastGroup',groupId);
-            await setStore('userPin',pin);
-            saveGroupToList(groupId,snap.data().groupName||groupId,myName);
-            startListening();
-            return;
+    // Busca na coleção 'pins' — documento com ID = PIN
+    const pinSnap=await getDoc(doc(db,'pins',pin));
+    if(pinSnap.exists()){
+      const pinData=pinSnap.data();
+      // pinData = { name: "Diego", groups: ["groupId1", "groupId2"] }
+      myName=pinData.name;
+      const groups=pinData.groups||[];
+      if(groups.length>0){
+        groupId=groups[0]; // carrega o primeiro grupo
+        // Salva todos os grupos na lista
+        for(const gid of groups){
+          const gSnap=await getDoc(doc(db,'groups',gid));
+          if(gSnap.exists()){
+            await saveGroupToList(gid,gSnap.data().groupName||gid,myName);
           }
         }
+        await setStore(storageKey(groupId),myName);
+        await setStore('lastGroup',groupId);
+        await setStore('userPin',pin);
+        startListening();
+      } else {
+        showToast('Nenhum grupo encontrado para este PIN.');
+        document.getElementById('join-screen').classList.remove('hidden');
+        document.getElementById('loader').classList.add('hidden');
       }
+    } else {
+      showToast('PIN não encontrado. Verifique e tente novamente.');
+      document.getElementById('join-screen').classList.remove('hidden');
+      document.getElementById('loader').classList.add('hidden');
+      await renderSavedGroups();
     }
-    showToast('PIN não encontrado. Verifique e tente novamente.');
-    document.getElementById('join-screen').classList.remove('hidden');
-    document.getElementById('loader').classList.add('hidden');
-    await renderSavedGroups();
   }catch(e){
+    console.error(e);
     showToast('Erro ao buscar. Tente novamente.');
     document.getElementById('join-screen').classList.remove('hidden');
     document.getElementById('loader').classList.add('hidden');
@@ -960,15 +967,25 @@ async function joinAndListen(){
   } else {
     myName=existing.name;
   }
-  // Salva deviceId → nome no Firebase
+  // Salva deviceId e PIN no Firebase
   const deviceId=getDeviceId();
   const devices=data.devices||{};
   devices[deviceId]=myName;
-  // Salva PIN se disponível
+  await updateDoc(ref,{devices});
+  // Salva PIN na coleção separada
   const savedPin=await getStore('userPin');
-  const pins=data.pins||{};
-  if(savedPin) pins[savedPin]={name:myName};
-  await updateDoc(ref,{devices, pins});
+  if(savedPin){
+    const pinRef=doc(db,'pins',savedPin);
+    const pinSnap=await getDoc(pinRef);
+    if(pinSnap.exists()){
+      const existing=pinSnap.data().groups||[];
+      if(!existing.includes(groupId)){
+        await updateDoc(pinRef,{groups:[...existing,groupId]});
+      }
+    } else {
+      await setDoc(pinRef,{name:myName,groups:[groupId]});
+    }
+  }
   await setStore(storageKey(groupId),myName);
   await setStore('lastGroup',groupId);
   await saveGroupToList(groupId,data.groupName||groupId,myName);
