@@ -720,7 +720,23 @@ function showToast(m){const t=document.getElementById('toast');t.textContent=m;t
 function setLoader(m){document.getElementById('loader-msg').textContent=m;}
 function genId(){return Math.random().toString(36).substring(2,10);}
 
-// ── STORAGE: usa cookies + localStorage como fallback ──
+// ── STORAGE: IndexedDB (Safari não limpa) + cookie + localStorage como fallbacks ──
+const IDB_NAME='alydibank',IDB_STORE='kv',IDB_VER=1;
+function openIDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(IDB_NAME,IDB_VER);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE);
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbSet(key,value){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(value,key);tx.oncomplete=res;tx.onerror=rej;});}catch(e){}
+}
+async function idbGet(key){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(key);r.onsuccess=()=>res(r.result);r.onerror=rej;});}catch(e){return null;}
+}
+
 function setCookie(name,value,days=365){
   const d=new Date();d.setTime(d.getTime()+(days*24*60*60*1000));
   document.cookie=`${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
@@ -729,15 +745,19 @@ function getCookie(name){
   const v=document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith(name+'='));
   return v?decodeURIComponent(v.split('=')[1]):null;
 }
-function setStore(key,value){
+async function setStore(key,value){
+  await idbSet(key,value);
   try{localStorage.setItem(key,value);}catch(e){}
   setCookie(key,value);
 }
-function getStore(key){
-  try{const v=localStorage.getItem(key);if(v)return v;}catch(e){}
+async function getStore(key){
+  const v=await idbGet(key);
+  if(v) return v;
+  try{const lv=localStorage.getItem(key);if(lv)return lv;}catch(e){}
   return getCookie(key);
 }
 function removeStore(key){
+  idbSet(key,null);
   try{localStorage.removeItem(key);}catch(e){}
   document.cookie=`${key}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
 }
@@ -745,27 +765,31 @@ function removeStore(key){
 function storageKey(gid){return 'alydi_name_'+gid;}
 
 // ── MÚLTIPLOS GRUPOS ──
-function allSavedGroups(){
-  try{const raw=localStorage.getItem('alydi_groups');if(raw)return JSON.parse(raw);}catch(e){}
-  const raw=getCookie('alydi_groups');
-  return raw?JSON.parse(raw):[];
+async function allSavedGroups(){
+  const v=await idbGet('alydi_groups');
+  if(v) return JSON.parse(v);
+  try{const lv=localStorage.getItem('alydi_groups');if(lv)return JSON.parse(lv);}catch(e){}
+  const cv=getCookie('alydi_groups');
+  return cv?JSON.parse(cv):[];
 }
-function saveGroupToList(gid,gName,uName){
-  const list=allSavedGroups().filter(g=>g.id!==gid);
+async function saveGroupToList(gid,gName,uName){
+  const list=(await allSavedGroups()).filter(g=>g.id!==gid);
   list.unshift({id:gid,name:gName,user:uName,ts:Date.now()});
   const val=JSON.stringify(list.slice(0,20));
+  await idbSet('alydi_groups',val);
   try{localStorage.setItem('alydi_groups',val);}catch(e){}
   setCookie('alydi_groups',val);
 }
-function removeGroupFromList(gid){
-  const list=allSavedGroups().filter(g=>g.id!==gid);
+async function removeGroupFromList(gid){
+  const list=(await allSavedGroups()).filter(g=>g.id!==gid);
   const val=JSON.stringify(list);
+  await idbSet('alydi_groups',val);
   try{localStorage.setItem('alydi_groups',val);}catch(e){}
   setCookie('alydi_groups',val);
 }
 
-function renderSavedGroups(){
-  const list=allSavedGroups();
+async function renderSavedGroups(){
+  const list=await allSavedGroups();
   const sec=document.getElementById('saved-groups-section');
   const el=document.getElementById('saved-groups-list');
   if(!sec||!el)return;
@@ -783,23 +807,25 @@ function renderSavedGroups(){
 }
 
 window.loadSavedGroup=async function(gid){
-  const list=allSavedGroups();
+  const list=await allSavedGroups();
   const item=list.find(g=>g.id===gid);
   if(!item)return;
   groupId=gid; myName=item.user;
-  localStorage.setItem('lastGroup',gid);
+  await setStore('lastGroup',gid);
   document.getElementById('join-screen').classList.add('hidden');
   document.getElementById('loader').classList.remove('hidden');
   setLoader('Carregando grupo...');
   await joinAndListen();
 }
-window.removeSavedGroup=function(evt,gid){
+window.removeSavedGroup=async function(evt,gid){
   evt.stopPropagation();
-  const item=allSavedGroups().find(g=>g.id===gid);
+  const list=await allSavedGroups();
+  const item=list.find(g=>g.id===gid);
   const name=item?.name||'este grupo';
   if(!confirm(`Remover "${name}" da sua lista?\n\nOs dados do grupo não serão apagados, só sairá da sua tela inicial.`)) return;
-  removeGroupFromList(gid);
-  if(localStorage.getItem('lastGroup')===gid) localStorage.removeItem('lastGroup');
+  await removeGroupFromList(gid);
+  const lg=await getStore('lastGroup');
+  if(lg===gid) await removeStore('lastGroup');
   renderSavedGroups();
 }
 window.switchGroup=function(){
@@ -1835,15 +1861,15 @@ async function init(){
   const gUrl=params.get('g');
   const uUrl=params.get('u');
   const deviceId=getDeviceId();
-  const lastGroup=getStore('lastGroup');
+  const lastGroup=await getStore('lastGroup');
 
   if(gUrl){
     groupId=gUrl;
-    const savedName=getStore(storageKey(groupId));
-    const savedGroup=allSavedGroups().find(g=>g.id===gUrl);
+    const savedName=await getStore(storageKey(groupId));
+    const savedGroups=await allSavedGroups();
+    const savedGroup=savedGroups.find(g=>g.id===gUrl);
     let resolvedName=savedName||uUrl||savedGroup?.user||null;
 
-    // Se não achou localmente, busca no Firebase pelo deviceId
     if(!resolvedName){
       try{
         const snap=await getDoc(doc(db,'groups',groupId));
@@ -1856,8 +1882,8 @@ async function init(){
 
     if(resolvedName){
       myName=resolvedName;
-      setStore(storageKey(groupId),myName);
-      setStore('lastGroup',groupId);
+      await setStore(storageKey(groupId),myName);
+      await setStore('lastGroup',groupId);
       setLoader('Carregando grupo...');
       document.getElementById('join-screen').classList.add('hidden');
       document.getElementById('loader').classList.remove('hidden');
@@ -1866,31 +1892,28 @@ async function init(){
       document.getElementById('join-code-input').value=location.href;
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('join-screen').classList.remove('hidden');
-      renderSavedGroups();
+      await renderSavedGroups();
     }
-  } else if(lastGroup&&getStore(storageKey(lastGroup))){
-    groupId=lastGroup; myName=getStore(storageKey(lastGroup));
+  } else if(lastGroup&&await getStore(storageKey(lastGroup))){
+    groupId=lastGroup; myName=await getStore(storageKey(lastGroup));
     persistGroupInUrl(groupId,myName);
     setLoader('Carregando grupo...');
     startListening();
   } else {
-    // Tenta recuperar pelo deviceId — busca em todos os grupos salvos no Firebase
-    const savedGroups=allSavedGroups();
-
-    // Primeiro tenta da lista local
+    const savedGroups=await allSavedGroups();
     if(savedGroups.length>0){
       const last=savedGroups[0];
       groupId=last.id; myName=last.user;
       persistGroupInUrl(groupId,myName);
-      setStore(storageKey(groupId),myName);
-      setStore('lastGroup',groupId);
+      await setStore(storageKey(groupId),myName);
+      await setStore('lastGroup',groupId);
       setLoader('Carregando grupo...');
       document.getElementById('join-screen').classList.add('hidden');
       startListening();
     } else {
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('join-screen').classList.remove('hidden');
-      renderSavedGroups();
+      await renderSavedGroups();
     }
   }
 }
